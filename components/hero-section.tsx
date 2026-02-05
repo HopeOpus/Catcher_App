@@ -61,6 +61,7 @@ export default function HeroSection() {
                                     Tailwindcss highly customizable components for building modern websites and applications that look and feel the way you mean it.
                                 </TextEffect>
 
+
                                 <AnimatedGroup
                                     variants={{
                                         container: {
@@ -98,6 +99,7 @@ export default function HeroSection() {
                                     </Button> */}
                                 </AnimatedGroup>
                             </div>
+                            <div></div>
                         </div>
                         <AnimatedGroup
                             variants={{
