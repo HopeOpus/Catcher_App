@@ -48,7 +48,7 @@ export default function HeroSection() {
                                     preset="fade-in-blur"
                                     speedSegment={0.3}
                                     as="h1"
-                                    className="mt-8 max-w-2xl text-balance text-5xl font-bold md:text-6xl lg:mt-16 text-[#0F2651]">
+                                    className="mt-8 max-w-2xl text-balance text-5xl font-bold md:text-6xl lg:mt-16 text-[#0F2651] tracking-tight">
                                     The Fastest way to Secure your properties from  <span className='text-[#36689e]'> theft  </span>
                                 </TextEffect>
                                 <TextEffect
