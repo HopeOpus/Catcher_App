@@ -58,7 +58,10 @@ export default function HeroSection() {
                                     delay={0.5}
                                     as="p"
                                     className="mt-8 max-w-2xl text-pretty text-lg">
-                                    Tailwindcss highly customizable components for building modern websites and applications that look and feel the way you mean it.
+                                    Never lose track of your valuables again.
+With Catcher, you can register your items in seconds, instantly report them stolen, and help stop thieves from reselling them.
+Buyers can check any serial number to avoid stolen goods — making selling and buying safer for everyone. <br /> <br />
+Join thousands of Nigerians protecting what matters most.
                                 </TextEffect>
 
 
@@ -78,10 +81,10 @@ export default function HeroSection() {
                                     <div
                                         key={1}
                                         className="bg-foreground/10 rounded-[calc(var(--radius-xl)+0.125rem)] border p-0.5">
-                                        <Button
-                                            asChild
-                                            size="lg"
-                                            className="rounded-xl px-5 text-base bg-gradient-to-r from-[#336699] to-[#0F2651]">
+                                    <Button
+                                        asChild
+                                        size="lg"
+                                        className="rounded-xl px-5 text-base bg-gradient-to-r from-[#336699] to-[#0F2651]">
                                             <Link href="#link">
                                                 <span className="text-nowrap">Secure your Property</span>
                                             </Link>

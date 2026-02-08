@@ -8,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu } from "lucide-react";
+import Link from "next/link";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export function Navigation() {
   return (
@@ -34,12 +36,32 @@ export function Navigation() {
             <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
               About
             </Button>
-            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
-              Sign In
-            </Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
-              Sign Up
-            </Button>
+            
+            <SignedOut>
+              <Link href="/auth/signin">
+                <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth/signup">
+                <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+                  Sign Up
+                </Button>
+              </Link>
+            </SignedOut>
+            
+            <SignedIn>
+              <UserButton 
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: 'w-10 h-10',
+                    userButtonPopoverCard: 'bg-white border border-slate-200 shadow-lg',
+                    userButtonPopoverActionButton: 'hover:bg-slate-50',
+                    userButtonPopoverFooter: 'border-t border-slate-200'
+                  }
+                }}
+              />
+            </SignedIn>
           </div>
 
           {/* Mobile Navigation */}
@@ -64,12 +86,34 @@ export function Navigation() {
                   <span>About</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <span>Sign In</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1 rounded-md">Sign Up</span>
-                </DropdownMenuItem>
+                
+                <SignedOut>
+                  <Link href="/auth/signin">
+                    <DropdownMenuItem>
+                      <span>Sign In</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/auth/signup">
+                    <DropdownMenuItem>
+                      <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1 rounded-md">Sign Up</span>
+                    </DropdownMenuItem>
+                  </Link>
+                </SignedOut>
+                
+                <SignedIn>
+                  <DropdownMenuItem>
+                    <UserButton 
+                      appearance={{
+                        elements: {
+                          userButtonAvatarBox: 'w-8 h-8 mr-2',
+                          userButtonPopoverCard: 'bg-white border border-slate-200 shadow-lg',
+                          userButtonPopoverActionButton: 'hover:bg-slate-50',
+                          userButtonPopoverFooter: 'border-t border-slate-200'
+                        }
+                      }}
+                    />
+                  </DropdownMenuItem>
+                </SignedIn>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
