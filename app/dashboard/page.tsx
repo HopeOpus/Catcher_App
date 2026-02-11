@@ -74,7 +74,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="justify-center align-middle container mx-auto px-3 py-10  max-w-10xl">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#0F2651] mb-2">Dashboard</h1>

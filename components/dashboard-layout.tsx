@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton, useAuth } from '@clerk/nextjs';
 import { Menu, X, Home, Building2, CreditCard, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -17,6 +17,7 @@ const navigationItems = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,7 +31,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="pr-0 w-64">
+              <SheetContent className="w-64">
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between p-4 border-b">
                     <h1 className="text-lg font-semibold text-[#0F2651]">Catcher</h1>
@@ -54,20 +55,46 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       </NavigationMenuList>
                     </NavigationMenu>
                   </nav>
+                  <div className="p-4 border-t border-gray-200">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-gray-700 hover:text-red-600"
+                      onClick={() => {
+                        signOut({ redirectUrl: '/' });
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="text-lg font-semibold text-[#0F2651]">Catcher</h1>
+            <img 
+                src="/logo2.svg" 
+                alt="Catcher Logo" 
+                className="h-8 w-auto"
+              />
           </div>
           <UserButton afterSignOutUrl="/" />
         </div>
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200">
+      <aside className="hidden lg:block fixed inset-y-0 left-2 z-50 w-80 bg-white border-r border-gray-200">
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-[#0F2651]">Catcher</h1>
+            <div className='flex'>
+
+
+            <img 
+              src="/logo2.svg" 
+              alt="Catcher Logo" 
+              className="h-8 w-auto mr-0"
+            />
+            <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>
+            </div>
             <UserButton afterSignOutUrl="/" />
           </div>
           
@@ -94,7 +121,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               variant="ghost"
               className="w-full justify-start text-gray-700 hover:text-red-600"
               onClick={() => {
-                // Clerk sign out will be handled by the UserButton
+                signOut({ redirectUrl: '/' });
               }}
             >
               <LogOut className="h-4 w-4 mr-2" />
@@ -105,7 +132,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64">
+      <main className="lg:ml-30">
         <div className="min-h-screen">
           {children}
         </div>
