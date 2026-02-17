@@ -21,8 +21,6 @@ export async function uploadFile(
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> {
   return new Promise((resolve) => {
-    // Simulate upload delay
-    const uploadTime = Math.random() * 2000 + 1000; // 1-3 seconds
     const fileSize = file.size;
     let uploaded = 0;
     
@@ -114,6 +112,7 @@ export async function compressImage(file: File, quality: number = 0.8): Promise<
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
     
     img.onload = () => {
       // Set canvas dimensions to match image
@@ -122,6 +121,9 @@ export async function compressImage(file: File, quality: number = 0.8): Promise<
       
       // Draw image on canvas
       ctx?.drawImage(img, 0, 0);
+      
+      // Clean up the object URL to prevent memory leaks
+      URL.revokeObjectURL(objectUrl);
       
       // Convert to blob with compression
       canvas.toBlob((blob) => {
@@ -137,9 +139,16 @@ export async function compressImage(file: File, quality: number = 0.8): Promise<
       }, file.type, quality);
     };
     
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      // Clean up on error as well
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+    
+    img.src = objectUrl;
   });
 }
+
 
 /**
  * Get file size in human readable format
@@ -158,7 +167,11 @@ export function formatFileSize(bytes: number): string {
  * Get file extension from filename
  */
 export function getFileExtension(filename: string): string {
-  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex === -1 || lastDotIndex === filename.length - 1) {
+    return '';
+  }
+  return filename.slice(lastDotIndex + 1);
 }
 
 /**
@@ -166,8 +179,8 @@ export function getFileExtension(filename: string): string {
  */
 export function generateUniqueFilename(originalName: string): string {
   const timestamp = Date.now();
-  const randomString = Math.random().toString(36).substr(2, 9);
+  const randomString = Math.random().toString(36).substring(2, 11);
   const extension = getFileExtension(originalName);
   
-  return `${timestamp}_${randomString}.${extension}`;
+  return extension ? `${timestamp}_${randomString}.${extension}` : `${timestamp}_${randomString}`;
 }

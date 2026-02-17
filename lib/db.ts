@@ -118,10 +118,16 @@ export const mockDatabase = {
   ]
 };
 
+// Helper function to generate unique IDs (replaces deprecated substr)
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 11);
+}
+
 // Utility functions for database operations
 export const db = {
   // Users
   getUser: (id: string) => mockDatabase.users.get(id),
+  getAllUsers: () => Array.from(mockDatabase.users.values()),
   createUser: (user: Omit<User, 'createdAt' | 'updatedAt'>) => {
     const newUser: User = {
       ...user,
@@ -136,11 +142,12 @@ export const db = {
   getPropertiesByUser: (userId: string) => {
     return Array.from(mockDatabase.properties.values()).filter(p => p.userId === userId);
   },
+  getAllProperties: () => Array.from(mockDatabase.properties.values()),
   getProperty: (id: string) => mockDatabase.properties.get(id),
   createProperty: (property: Omit<Property, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newProperty: Property = {
       ...property,
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -167,10 +174,11 @@ export const db = {
   getSubscriptionByUser: (userId: string) => {
     return Array.from(mockDatabase.subscriptions.values()).find(s => s.userId === userId);
   },
+  getAllSubscriptions: () => Array.from(mockDatabase.subscriptions.values()),
   createSubscription: (subscription: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newSubscription: Subscription = {
       ...subscription,
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -194,11 +202,12 @@ export const db = {
   getReportsByUser: (userId: string) => {
     return Array.from(mockDatabase.stolenReports.values()).filter(r => r.userId === userId);
   },
+  getAllReports: () => Array.from(mockDatabase.stolenReports.values()),
   getReport: (id: string) => mockDatabase.stolenReports.get(id),
   createReport: (report: Omit<StolenReport, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newReport: StolenReport = {
       ...report,
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };

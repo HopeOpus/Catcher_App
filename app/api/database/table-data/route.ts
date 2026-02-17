@@ -48,12 +48,14 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Failed to load table data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to load table data';
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to load table data' 
+        error: errorMessage
       },
       { status: 500 }
     );
   }
+
 }

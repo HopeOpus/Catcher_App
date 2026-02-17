@@ -1,5 +1,10 @@
-import { PoolClient } from 'pg';
+// Helper function to generate unique IDs (replaces deprecated substr)
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 11);
+}
+
 import { db } from './connection';
+
 
 // Type definitions
 export interface User {
@@ -139,7 +144,7 @@ export const propertyAPI = {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
          RETURNING *`,
         [
-          Math.random().toString(36).substr(2, 9),
+          generateId(),
           propertyData.user_id,
           propertyData.name,
           propertyData.type,
@@ -154,6 +159,7 @@ export const propertyAPI = {
       client.release();
     }
   },
+
 
   async updateProperty(id: string, updates: Partial<Property>): Promise<Property | null> {
     const client = await db.connect();
@@ -183,12 +189,13 @@ export const propertyAPI = {
         'DELETE FROM properties WHERE id = $1 RETURNING id',
         [id]
       );
-      return result.rowCount > 0;
+      return (result.rowCount ?? 0) > 0;
     } finally {
       client.release();
     }
   }
 };
+
 
 // Property photo operations
 export const photoAPI = {
@@ -213,7 +220,7 @@ export const photoAPI = {
          VALUES ($1, $2, $3, $4, $5, $6, NOW())
          RETURNING *`,
         [
-          Math.random().toString(36).substr(2, 9),
+          generateId(),
           photoData.property_id,
           photoData.file_name,
           photoData.file_url,
@@ -234,12 +241,13 @@ export const photoAPI = {
         'DELETE FROM property_photos WHERE id = $1 RETURNING id',
         [id]
       );
-      return result.rowCount > 0;
+      return (result.rowCount ?? 0) > 0;
     } finally {
       client.release();
     }
   }
 };
+
 
 // Pre-registered property operations
 export const preRegisteredPropertyAPI = {
@@ -292,7 +300,7 @@ export const subscriptionAPI = {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
          RETURNING *`,
         [
-          Math.random().toString(36).substr(2, 9),
+          generateId(),
           subscriptionData.user_id,
           subscriptionData.plan_id,
           subscriptionData.plan_name,
@@ -308,6 +316,7 @@ export const subscriptionAPI = {
       client.release();
     }
   },
+
 
   async updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription | null> {
     const client = await db.connect();
@@ -367,7 +376,7 @@ export const stolenReportAPI = {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
          RETURNING *`,
         [
-          Math.random().toString(36).substr(2, 9),
+          generateId(),
           reportData.user_id,
           reportData.property_id,
           reportData.property_name,
@@ -413,12 +422,13 @@ export const stolenReportAPI = {
         'DELETE FROM stolen_reports WHERE id = $1 RETURNING id',
         [id]
       );
-      return result.rowCount > 0;
+      return (result.rowCount ?? 0) > 0;
     } finally {
       client.release();
     }
   }
 };
+
 
 // Export all APIs
 export const api = {

@@ -20,9 +20,11 @@ CREATE TABLE IF NOT EXISTS properties (
     description TEXT,
     date_registered DATE NOT NULL,
     status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Flagged', 'Stolen')),
+    photo_url VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Property photos table
 CREATE TABLE IF NOT EXISTS property_photos (

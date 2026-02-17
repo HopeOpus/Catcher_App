@@ -1,4 +1,6 @@
 import { Pool } from 'pg';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 
 // Database connection configuration for Neon
@@ -30,10 +32,11 @@ export async function testConnection() {
 export async function initializeDatabase() {
   try {
     // Read schema from file
-    const schema = await import('./schema.sql');
+    const schemaPath = join(__dirname, 'schema.sql');
+    const schema = readFileSync(schemaPath, 'utf-8');
     
     const client = await pool.connect();
-    await client.query(schema.default || schema);
+    await client.query(schema);
     client.release();
     
     // Seed pre-registered properties

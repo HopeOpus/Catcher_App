@@ -20,10 +20,11 @@ import {
   Image as ImageIcon,
   X,
   Camera,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { uploadFile, validateFile, getPreviewUrl, cleanupPreviewUrl } from '@/lib/upload';
-import { db, Property as PropertyType } from '@/lib/db';
+import { validateFile, getPreviewUrl, cleanupPreviewUrl } from '@/lib/upload';
 import { ReportStolenModal } from '@/components/report-stolen-modal';
 
 interface PropertyPhoto {
@@ -45,6 +46,128 @@ interface Property {
   photos: PropertyPhoto[];
 }
 
+// Image Preview Modal Component
+function ImagePreviewModal({ 
+  images, 
+  currentIndex, 
+  onClose, 
+  onNext, 
+  onPrev 
+}: { 
+  images: string[]; 
+  currentIndex: number; 
+  onClose: () => void; 
+  onNext: () => void;
+  onPrev: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') onNext();
+      if (e.key === 'ArrowLeft') onPrev();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onNext, onPrev]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90" onClick={onClose}>
+      {/* Close button */}
+      <button 
+        className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full"
+        onClick={onClose}
+      >
+        <X className="h-8 w-8" />
+      </button>
+      
+      {/* Previous button */}
+      {images.length > 1 && (
+        <button 
+          className="absolute left-4 text-white p-2 hover:bg-white/20 rounded-full"
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+        >
+          <ChevronLeft className="h-10 w-10" />
+        </button>
+      )}
+      
+      {/* Image */}
+      <img 
+        src={images[currentIndex]} 
+        alt={`Image ${currentIndex + 1}`}
+        className="max-h-[90vh] max-w-[90vw] object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+      
+      {/* Next button */}
+      {images.length > 1 && (
+        <button 
+          className="absolute right-4 text-white p-2 hover:bg-white/20 rounded-full"
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+        >
+          <ChevronRight className="h-10 w-10" />
+        </button>
+      )}
+      
+      {/* Image counter */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-full">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Delete Confirmation Modal Component
+function DeleteConfirmModal({
+  isOpen,
+  itemName,
+  onConfirm,
+  onCancel
+}: {
+  isOpen: boolean;
+  itemName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f1f1fdb] bg-opacity-10">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-[#0F2651] text-center mb-2">
+            Delete Property
+          </h3>
+          <p className="text-gray-600 text-center">
+            Are you sure you want to delete <strong>`{itemName}`</strong>? This action cannot be undone.
+          </p>
+        </div>
+        <div className="flex gap-3 px-6 pb-6">
+          <Button
+            onClick={onCancel}
+            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50"
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isAddingProperty, setIsAddingProperty] = useState(false);
@@ -59,98 +182,104 @@ export default function PropertiesPage() {
   });
   const [uploadingPhotos, setUploadingPhotos] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  
+  // Image preview modal state
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  
+  // Delete confirmation modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load properties from database on component mount
   useEffect(() => {
-    // For now, we'll use mock data. In a real application, this would fetch from an API
-    const mockProperties: Property[] = [
-      {
-        id: '1',
-        name: '2023 Toyota Camry',
-        type: 'Vehicle',
-        serialNumber: '4T1BF1FK8RU123456',
-        description: 'Black sedan with leather interior',
-        dateRegistered: '2024-01-15',
-        status: 'Active',
-        photos: [
-          {
-            id: '1',
-            file: new File([''], 'car1.jpg', { type: 'image/jpeg' }),
-            preview: '/placeholder-property.jpg',
-            uploaded: true,
-            url: '/placeholder-property.jpg'
-          }
-        ]
-      },
-      {
-        id: '2',
-        name: 'iPhone 15 Pro',
-        type: 'Electronics',
-        serialNumber: 'F123456789',
-        description: '128GB, Natural Titanium',
-        dateRegistered: '2024-01-10',
-        status: 'Active',
-        photos: [
-          {
-            id: '2',
-            file: new File([''], 'phone1.jpg', { type: 'image/jpeg' }),
-            preview: '/placeholder-electronics.jpg',
-            uploaded: true,
-            url: '/placeholder-electronics.jpg'
-          }
-        ]
-      },
-      {
-        id: '3',
-        name: 'Rolex Submariner',
-        type: 'Jewelry',
-        serialNumber: 'M123456',
-        description: 'Stainless steel with black dial',
-        dateRegistered: '2024-01-05',
-        status: 'Flagged',
-        photos: [
-          {
-            id: '3',
-            file: new File([''], 'watch1.jpg', { type: 'image/jpeg' }),
-            preview: '/placeholder-jewelry.jpg',
-            uploaded: true,
-            url: '/placeholder-jewelry.jpg'
-          }
-        ]
-      }
-    ];
-    setProperties(mockProperties);
+    fetchProperties();
   }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const response = await fetch('/api/properties');
+      if (response.ok) {
+        const data = await response.json();
+        // Transform database data to frontend format
+        const transformed = data.map((p: { 
+          id: string; 
+          name: string; 
+          type: string; 
+          serial_number: string; 
+          description: string; 
+          date_registered: string | Date; 
+          status: string;
+          photo_url?: string;
+        }) => ({
+          id: p.id,
+          name: p.name,
+          type: p.type,
+          serialNumber: p.serial_number,
+          description: p.description,
+          dateRegistered: new Date(p.date_registered).toISOString().split('T')[0],
+          status: p.status,
+          photos: p.photo_url ? [{
+            id: p.id,
+            file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
+            preview: p.photo_url,
+            uploaded: true,
+            url: p.photo_url
+          }] : []
+        }));
+        setProperties(transformed);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleAddProperty = async () => {
     if (newProperty.name && newProperty.type && newProperty.serialNumber) {
       // Upload all photos first
-      const uploadedPhotos = [];
+      const uploadedPhotos: PropertyPhoto[] = [];
+      const propertyId = Math.random().toString(36).substring(2, 11);
+      
       for (const photo of newProperty.photos) {
         if (!photo.uploaded && photo.file) {
           setUploadingPhotos(prev => [...prev, photo.id]);
           
           try {
-            const result = await uploadFile(photo.file, (progress) => {
-              setUploadProgress(prev => ({
-                ...prev,
-                [photo.id]: progress.percentage
-              }));
+            // Use real upload API
+            const formData = new FormData();
+            formData.append('file', photo.file);
+            formData.append('propertyId', propertyId);
+            
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
             });
             
-            if (result.success) {
+            if (response.ok) {
+              const result = await response.json();
               uploadedPhotos.push({
                 ...photo,
                 uploaded: true,
                 url: result.url
               });
             } else {
-              throw new Error(result.error || 'Upload failed');
+              throw new Error('Upload failed');
             }
           } catch (error) {
             console.error('Upload failed:', error);
-            // Handle upload error
+            // Use preview URL as fallback
+            uploadedPhotos.push({
+              ...photo,
+              uploaded: true,
+              url: photo.preview
+            });
           } finally {
             setUploadingPhotos(prev => prev.filter(id => id !== photo.id));
           }
@@ -159,22 +288,37 @@ export default function PropertiesPage() {
         }
       }
 
-      const property: Property = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newProperty.name,
-        type: newProperty.type,
-        serialNumber: newProperty.serialNumber,
-        description: newProperty.description,
-        dateRegistered: new Date().toISOString().split('T')[0],
-        status: 'Active',
-        photos: uploadedPhotos
-      };
-      
-      setProperties([...properties, property]);
+      // Save property to database
+      try {
+        const response = await fetch('/api/properties', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: newProperty.name,
+            type: newProperty.type,
+            serial_number: newProperty.serialNumber,
+            description: newProperty.description,
+            user_id: 'default-user', // In a real app, get from auth
+            status: 'Active',
+            photo_url: uploadedPhotos[0]?.url || null
+          })
+        });
+
+        if (response.ok) {
+          // Refresh properties list
+          await fetchProperties();
+        }
+      } catch (error) {
+        console.error('Error saving property:', error);
+      }
+
       setNewProperty({ name: '', type: '', serialNumber: '', description: '', photos: [] });
       setIsAddingProperty(false);
     }
   };
+
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -187,7 +331,7 @@ export default function PropertiesPage() {
       
       if (validation.valid) {
         const photo: PropertyPhoto = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).substring(2, 11),
           file: file,
           preview: getPreviewUrl(file),
           uploaded: false
@@ -234,8 +378,35 @@ export default function PropertiesPage() {
     }
   };
 
-  const handleDeleteProperty = (id: string) => {
-    setProperties(properties.filter(prop => prop.id !== id));
+  const handleDeleteClick = (property: Property) => {
+    setPropertyToDelete(property);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!propertyToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/properties?id=${propertyToDelete.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setProperties(properties.filter(prop => prop.id !== propertyToDelete.id));
+      } else {
+        console.error('Failed to delete property');
+      }
+    } catch (error) {
+      console.error('Error deleting property:', error);
+    } finally {
+      setDeleteModalOpen(false);
+      setPropertyToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+    setPropertyToDelete(null);
   };
 
   return (
@@ -387,13 +558,31 @@ export default function PropertiesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map((property) => (
             <Card key={property.id} className="hover:shadow-lg transition-shadow">
-              {/* Property Image */}
-              <div className="relative aspect-video bg-gray-100">
+              {/* Property Image - Clickable for preview */}
+              <div 
+                className="relative aspect-video bg-gray-100 cursor-pointer"
+                onClick={() => {
+                  if (property.photos.length > 0) {
+                    // Add cache-busting to URLs
+                    const images = property.photos.map(p => {
+                      const url = p.url || p.preview;
+                      return url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
+                    });
+                    setPreviewImages(images);
+                    setPreviewIndex(0);
+                    setPreviewOpen(true);
+                  }
+                }}
+              >
                 {property.photos.length > 0 ? (
                   <img
-                    src={property.photos[0].url || property.photos[0].preview}
+                    src={`${property.photos[0].url || property.photos[0].preview}?t=${Date.now()}`}
                     alt={property.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback if image fails to load
+                      e.currentTarget.src = property.photos[0].preview;
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -403,6 +592,11 @@ export default function PropertiesPage() {
                 {property.photos.length > 1 && (
                   <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                     +{property.photos.length - 1}
+                  </div>
+                )}
+                {property.photos.length > 0 && (
+                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all flex items-center justify-center">
+                    <Eye className="h-8 w-8 text-white opacity-0 hover:opacity-70" />
                   </div>
                 )}
               </div>
@@ -458,7 +652,7 @@ export default function PropertiesPage() {
                     variant="ghost" 
                     size="sm" 
                     className="text-gray-500 hover:text-red-600"
-                    onClick={() => handleDeleteProperty(property.id)}
+                    onClick={() => handleDeleteClick(property)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -498,7 +692,29 @@ export default function PropertiesPage() {
             serialNumber={selectedProperty.serialNumber}
           />
         )}
+
+        {/* Image Preview Modal */}
+        {previewOpen && (
+          <ImagePreviewModal
+            images={previewImages}
+            currentIndex={previewIndex}
+            onClose={() => setPreviewOpen(false)}
+            onNext={() => setPreviewIndex((previewIndex + 1) % previewImages.length)}
+            onPrev={() => setPreviewIndex((previewIndex - 1 + previewImages.length) % previewImages.length)}
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={deleteModalOpen}
+          itemName={propertyToDelete?.name || ''}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
       </div>
     </DashboardLayout>
   );
 }
+
+
+
