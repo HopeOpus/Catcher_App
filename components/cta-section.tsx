@@ -2,24 +2,26 @@ import { Button } from "@/components/ui/button";
 
 export function CTASection() {
   return (
-    <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+    <section className="py-20 bg-gradient-to-r from-[#336699] to-[#0F2651] text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-4xl md:text-5xl font-bold mb-6">
-          Ready to Transform
-          <span className="block">Your Workflow?</span>
+          Ready to Secure
+          <span className="block">Your Valuables?</span>
         </h2>
         <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-          Join thousands of teams who have already discovered the power of Catcher. 
-          Start your free trial today and see the difference for yourself.
+          Join thousands of people who have already discovered the peace of mind with Catcher. 
+          Register your items today and stay protected.
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 font-semibold">
-            Start Free Trial
-          </Button>
-          <Button variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-4 rounded-xl transition-all duration-200">
-            Schedule Demo
-          </Button>
+        
+            <img src="/playstore.png" alt="Play Store" className="h-13 w-47 " />
+            
+          
+          
+            <img src="/ios.png" alt="App Store" className="h-13 w-47 " />
+            
+         
         </div>
 
         <div className="mt-12 flex flex-col sm:flex-row gap-8 justify-center items-center text-blue-100">
@@ -42,7 +44,15 @@ export function CTASection() {
             <span>Instant setup</span>
           </div>
         </div>
+      {/* <div className="absolute top-1/2 left-0 transform -translate-y-1/2 w-full max-w-lg md:max-w-xl pointer-events-none">
+        <img 
+          src="/hand.png" 
+          alt="Hand illustration" 
+          className="w-full h-auto object-contain"
+        />
+      </div> */}
       </div>
+
     </section>
   );
 }

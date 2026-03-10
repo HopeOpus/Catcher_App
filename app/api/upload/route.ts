@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     // Write file to disk
     await writeFile(filepath, buffer);
 
-    // Return the public URL
+    // Return the public URL to serve the file directly from public/uploads
+    // (Next.js serves files from public/ directory automatically)
     const url = `/uploads/${filename}`;
     
     return NextResponse.json({ 

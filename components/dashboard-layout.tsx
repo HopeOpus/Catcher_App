@@ -86,14 +86,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className='flex'>
-
-
-            <img 
-              src="/logo2.svg" 
-              alt="Catcher Logo" 
-              className="h-8 w-auto mr-0"
-            />
-            <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>
+              <img 
+                src="/logo2.svg" 
+                alt="Catcher Logo" 
+                className="h-8 w-auto mr-0"
+              />
+              <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>
             </div>
             <UserButton afterSignOutUrl="/" />
           </div>

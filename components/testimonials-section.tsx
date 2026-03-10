@@ -30,14 +30,14 @@ export function TestimonialsSection() {
     <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Loved by Teams
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0F2651] mb-4">
+            Loved by Individuals
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#336699] to-[#0F2651]">
               Worldwide
             </span>
           </h2>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            Join thousands of teams who have transformed their workflow with Catcher. 
+            Join thousands of individuals who have transformed their property security with Catcher. 
             Here`s what they have to say about their experience.
           </p>
         </div>

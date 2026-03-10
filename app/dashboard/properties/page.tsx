@@ -226,9 +226,9 @@ export default function PropertiesPage() {
           photos: p.photo_url ? [{
             id: p.id,
             file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
-            preview: p.photo_url,
+            preview: p.photo_url.startsWith('/api/uploads/') ? p.photo_url.replace('/api/uploads/', '/uploads/') : p.photo_url,
             uploaded: true,
-            url: p.photo_url
+            url: p.photo_url.startsWith('/api/uploads/') ? p.photo_url.replace('/api/uploads/', '/uploads/') : p.photo_url
           }] : []
         }));
         setProperties(transformed);
@@ -563,11 +563,7 @@ export default function PropertiesPage() {
                 className="relative aspect-video bg-gray-100 cursor-pointer"
                 onClick={() => {
                   if (property.photos.length > 0) {
-                    // Add cache-busting to URLs
-                    const images = property.photos.map(p => {
-                      const url = p.url || p.preview;
-                      return url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
-                    });
+                    const images = property.photos.map(p => p.url || p.preview);
                     setPreviewImages(images);
                     setPreviewIndex(0);
                     setPreviewOpen(true);
@@ -576,12 +572,15 @@ export default function PropertiesPage() {
               >
                 {property.photos.length > 0 ? (
                   <img
-                    src={`${property.photos[0].url || property.photos[0].preview}?t=${Date.now()}`}
+                    src={property.photos[0].url || property.photos[0].preview}
                     alt={property.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Fallback if image fails to load
-                      e.currentTarget.src = property.photos[0].preview;
+                      // Prevent infinite loop on error
+                      const target = e.currentTarget as HTMLImageElement;
+                      if (target.src !== property.photos[0].preview) {
+                        target.src = property.photos[0].preview;
+                      }
                     }}
                   />
                 ) : (

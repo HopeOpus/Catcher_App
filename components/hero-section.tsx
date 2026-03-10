@@ -61,7 +61,7 @@ export default function HeroSection() {
                                     Never lose track of your valuables again.
 With Catcher, you can register your items in seconds, instantly report them stolen, and help stop thieves from reselling them.
 Buyers can check any serial number to avoid stolen goods — making selling and buying safer for everyone. <br /> <br />
-Join thousands of Nigerians protecting what matters most.
+Join thousands globally protecting what matters most.
                                 </TextEffect>
 
 
@@ -120,7 +120,7 @@ Join thousands of Nigerians protecting what matters most.
                                 <div className="inset-shadow-2xs ring-background dark:inset-shadow-white/20 bg-background relative mx-auto max-w-5xl overflow-hidden rounded-2xl border p-4 shadow-lg shadow-zinc-950/15 ring-1">
                                     <Image
                                         className="bg-background aspect-15/8 relative hidden rounded-2xl dark:block"
-                                        src="/Dashboard.svg"
+                                        src="/hero_img.svg"
                                         alt="app screen"
                                         width={2700}
                                         height={1440}
@@ -128,7 +128,7 @@ Join thousands of Nigerians protecting what matters most.
                                     />
                                     <Image
                                         className="z-2 border-border/25 aspect-15/8 relative rounded-2xl border dark:hidden"
-                                        src="/Dashboard.svg"
+                                        src="/hero_img.svg"
                                         alt="app screen"
                                         width={2700}
                                         height={1440}
@@ -139,7 +139,7 @@ Join thousands of Nigerians protecting what matters most.
                         </AnimatedGroup>
                     </div>
                 </section>
-                <section className="bg-background pb-16 pt-16 md:pb-32">
+                {/* <section className="bg-background pb-16 pt-16 md:pb-32">
                     <div className="group relative m-auto max-w-5xl px-6">
                         <div className="absolute inset-0 z-10 flex scale-95 items-center justify-center opacity-0 duration-500 group-hover:scale-100 group-hover:opacity-100">
                             <Link
@@ -227,7 +227,7 @@ Join thousands of Nigerians protecting what matters most.
                             </div>
                         </div>
                     </div>
-                </section>
+                </section> */}
             </main>
         </>
     )

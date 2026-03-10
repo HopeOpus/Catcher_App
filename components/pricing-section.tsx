@@ -4,18 +4,18 @@ export function PricingSection() {
   const plans = [
     {
       name: "Free",
-      price: "$0",
-      period: "forever",
-      description: "Perfect for individuals and small projects",
+      price: "$1",
+      period: "monthly",
+      description: "Perfect for individuals, Monthly Payments",
       features: [
         "Up to 3 projects",
         "Basic task management",
-        "File sharing (1GB)",
+        "File sharing (500MB)",
         "Email support",
         "Mobile app access"
       ],
       cta: "Get Started",
-      popular: false
+      popular: true
     },
     {
       name: "Pro",
@@ -25,7 +25,7 @@ export function PricingSection() {
       features: [
         "Unlimited projects",
         "Advanced task management",
-        "File sharing (10GB)",
+        "File sharing (5GB)",
         "Priority email support",
         "Mobile app access",
         "Custom workflows",
@@ -33,11 +33,11 @@ export function PricingSection() {
         "Team collaboration"
       ],
       cta: "Start Free Trial",
-      popular: true
+      popular: false
     },
     {
       name: "Enterprise",
-      price: "$45",
+      price: "$30",
       period: "per user/month",
       description: "For large organizations with advanced needs",
       features: [
@@ -59,9 +59,9 @@ export function PricingSection() {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0F2651] mb-4">
             Simple, Transparent
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#336699] to-[#0F2651]">
               Pricing
             </span>
           </h2>
@@ -77,13 +77,13 @@ export function PricingSection() {
               key={index}
               className={`relative bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl shadow-lg border-2 ${
                 plan.popular 
-                  ? "border-blue-500/50 bg-gradient-to-br from-blue-50 to-white" 
+                  ? "border-[#36689e]/50 bg-gradient-to-br from-[#f0f5fa] to-white" 
                   : "border-slate-200/50"
               } hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+                  <span className="bg-gradient-to-r from-[#336699] to-[#0F2651] text-white px-4 py-1 rounded-full text-sm font-medium">
                     Most Popular
                   </span>
                 </div>
@@ -110,10 +110,10 @@ export function PricingSection() {
               </ul>
 
               <Button 
-                className={`w-full py-3 text-lg font-semibold ${
+                className={`w-full py-3 text-lg font-semibold border-radius-2xl ${
                   plan.popular
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-                    : "bg-white text-slate-900 border-2 border-slate-300 hover:bg-slate-50"
+                    ? "bg-gradient-to-r from-[#336699] to-[#0F2651] hover:from-[#0F2651] hover:to-[#0F2651] text-white shadow-lg border-radius-2xl border-[#36689e]"
+                    : "bg-white text-[#0F2651] border-radius-2xl border-slate-300 hover:bg-slate-100"
                 } transition-all duration-200 transform hover:-translate-y-1`}
               >
                 {plan.cta}
@@ -125,7 +125,7 @@ export function PricingSection() {
         <div className="mt-12 text-center">
           <p className="text-slate-600">
             Looking for custom solutions?{" "}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a href="#" className="text-[#36689e] hover:text-[#0F2651] font-medium">
               Contact our sales team
             </a>
           </p>
