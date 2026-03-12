@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 export function PricingSection() {
   const plans = [
     {
-      name: "Free",
+      name: "Basic",
       price: "$1",
-      period: "monthly",
+      period: "per Item/monthly",
       description: "Perfect for individuals, Monthly Payments",
       features: [
-        "Up to 3 projects",
+       
         "Basic task management",
         "File sharing (500MB)",
         "Email support",
@@ -19,11 +19,11 @@ export function PricingSection() {
     },
     {
       name: "Pro",
-      price: "$15",
-      period: "per user/month",
+      price: "$5",
+      period: "per Item/Anually",
       description: "For growing teams and professionals",
       features: [
-        "Unlimited projects",
+       
         "Advanced task management",
         "File sharing (5GB)",
         "Priority email support",
@@ -37,8 +37,7 @@ export function PricingSection() {
     },
     {
       name: "Enterprise",
-      price: "$30",
-      period: "per user/month",
+      price: "Contact Us",
       description: "For large organizations with advanced needs",
       features: [
         "Everything in Pro",
