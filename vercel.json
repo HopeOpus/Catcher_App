@@ -1,12 +1,8 @@
 {
   "version": 2,
   "name": "catcher-app",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
+  
+  
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
