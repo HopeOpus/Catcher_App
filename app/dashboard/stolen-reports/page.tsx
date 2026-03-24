@@ -10,14 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { 
   AlertTriangle, 
-  ShieldCheck, 
   Eye, 
   Edit, 
   Trash2, 
-  Plus,
   MapPin,
   Calendar,
-  User,
   FileText,
   Upload
 } from 'lucide-react';
@@ -65,9 +62,6 @@ export default function StolenReportsPage() {
     description: '',
     evidence: [] as File[]
   });
-
-  const [selectedReport, setSelectedReport] = useState<StolenReport | null>(null);
-
   const handleReportStolen = () => {
     if (newReport.propertyName && newReport.serialNumber && newReport.location && newReport.description) {
       const report: StolenReport = {

@@ -6,7 +6,6 @@ import Features from "@/components/features-1";
 import { PricingSection } from "@/components/pricing-section";
 import { CTASection } from "@/components/cta-section";
 import  Footer  from "@/components/footer";
-import Link from "next/link";
 import ContentSection from "@/components/content-5";
 export default function Home() {
   return (

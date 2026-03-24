@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export function Navigation() {
@@ -17,9 +18,11 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex gap-1">
-            <img 
-              src="/logo2.svg" 
-              alt="Catcher Logo" 
+            <Image
+              src="/logo2.svg"
+              alt="Catcher Logo"
+              width={160}
+              height={32}
               className="h-8 w-auto mr-0"
             />
             <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>

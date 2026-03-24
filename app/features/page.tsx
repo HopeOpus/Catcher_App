@@ -1,6 +1,5 @@
 import ContentSection from "@/components/content-7";
 import CommunitySection from "@/components/content-6";
-import { HeroHeader } from "@/components/header";
 import Footer from "@/components/footer";
 import { Navigation } from "@/components/navigation";
 import { CTASection } from "@/components/cta-section";

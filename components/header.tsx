@@ -1,12 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { Logo } from '@/components/logo'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { useScroll } from 'motion/react'
-import Img from 'next/image'
+import Image from 'next/image'
 
 
 const menuItems = [
@@ -41,9 +40,11 @@ export const HeroHeader = () => {
                                 href="/"
                                 aria-label="home"
                                 className="flex items-center space-x-2">
-                                <img 
-                                    src="/logo2.svg" 
-                                    alt="Catcher Logo" 
+                                <Image
+                                    src="/logo2.svg"
+                                    alt="Catcher Logo"
+                                    width={160}
+                                    height={32}
                                     className="h-8 w-auto"
                                 />
                                 <span className="text-lg font-semibold text-[#0F2651] tracking-tight">Catcher</span>

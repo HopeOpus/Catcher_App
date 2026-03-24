@@ -1,41 +1,92 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/db/connection';
+import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import {
+  DEFAULT_PROPERTY_STATUS,
+  extractFileNameFromUrl,
+  isPropertyStatus,
+  isPropertyType,
+  normalizeStoredPhotoUrl,
+  type PropertyStatusValue,
+  type PropertyTypeValue,
+} from "@/lib/catcher-domain";
+import { prisma } from "@/lib/prisma";
+
+type PropertyRecord = {
+  id: string;
+  userId: string;
+  name: string;
+  type: PropertyTypeValue;
+  serialNumber: string;
+  description: string | null;
+  dateRegistered: Date;
+  status: PropertyStatusValue;
+  photoUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  photos: Array<{
+    id: string;
+    fileName: string;
+    fileUrl: string;
+  }>;
+};
+
+function serializeProperty(property: PropertyRecord) {
+  const photoUrls = property.photos.map((photo) =>
+    normalizeStoredPhotoUrl(photo.fileUrl),
+  );
+  const coverPhoto = property.photoUrl
+    ? normalizeStoredPhotoUrl(property.photoUrl)
+    : (photoUrls[0] ?? null);
+
+  return {
+    id: property.id,
+    user_id: property.userId,
+    name: property.name,
+    type: property.type,
+    serial_number: property.serialNumber,
+    description: property.description,
+    date_registered: property.dateRegistered,
+    status: property.status,
+    photo_url: coverPhoto,
+    photo_urls: photoUrls,
+    property_photos: property.photos.map((photo) => ({
+      id: photo.id,
+      file_name: photo.fileName,
+      file_url: normalizeStoredPhotoUrl(photo.fileUrl),
+    })),
+    created_at: property.createdAt,
+    updated_at: property.updatedAt,
+  };
+}
+
+function parsePhotoUrls(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (photoUrl): photoUrl is string =>
+      typeof photoUrl === "string" && photoUrl.trim().length > 0,
+  );
+}
 
 // GET - Fetch all properties or filter by user
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    
-    // First check if photo_url column exists
-    const client = await db.connect();
-    let query = 'SELECT id, user_id, name, type, serial_number, description, date_registered, status, created_at, updated_at';
-    
-    try {
-      const columnCheck = await client.query(
-        `SELECT column_name FROM information_schema.columns 
-         WHERE table_name = 'properties' AND column_name = 'photo_url'`
-      );
-      if (columnCheck.rows.length > 0) {
-        query = 'SELECT * FROM properties';
-      }
-    } catch {
-      // Column doesn't exist, use basic query
-    }
-    
-    let params: string[] = [];
-    
-    if (userId) {
-      query += ' WHERE user_id = $1';
-      params = [userId];
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    const result = await client.query(query, params);
-    client.release();
-    
-    return NextResponse.json(result.rows);
+
+    const properties = await prisma.property.findMany({
+      where: userId ? { userId } : undefined,
+      include: {
+        photos: {
+          orderBy: { uploadedAt: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(properties.map(serializeProperty));
   } catch (error) {
     console.error('Error fetching properties:', error);
     return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 });
@@ -45,59 +96,110 @@ export async function GET(request: Request) {
 
 // POST - Create a new property
 export async function POST(request: Request) {
-  const client = await db.connect();
   try {
     const body = await request.json();
-    const { user_id, name, type, serial_number, description, status, photo_url } = body;
-    
-    const id = Math.random().toString(36).substring(2, 11);
-    
-    // Check if user exists, if not create a default user
-    const finalUserId = user_id || 'default-user';
+    const {
+      user_id,
+      user_email,
+      user_name,
+      name,
+      type,
+      serial_number,
+      description,
+      status,
+      photo_url,
+      photo_urls,
+    } = body;
 
-    const userCheck = await client.query('SELECT id FROM users WHERE id = $1', [finalUserId]);
-    
-    if (userCheck.rows.length === 0) {
-      // Create default user
-      await client.query(
-        `INSERT INTO users (id, email, name, created_at, updated_at)
-         VALUES ($1, $2, $3, NOW(), NOW())
-         ON CONFLICT (id) DO NOTHING`,
-        [finalUserId, 'default@catcher.com', 'Default User']
+    if (!name || !type || !serial_number) {
+      return NextResponse.json(
+        { error: "name, type, and serial_number are required" },
+        { status: 400 },
       );
     }
-    
-    // Check if photo_url column exists
-    const columnCheck = await client.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_name = 'properties' AND column_name = 'photo_url'`
-    );
-    
-    let result;
-    if (columnCheck.rows.length > 0 && photo_url) {
-      // Column exists and we have a photo URL
-      result = await client.query(
-        `INSERT INTO properties (id, user_id, name, type, serial_number, description, date_registered, status, photo_url, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, $8, NOW(), NOW())
-         RETURNING *`,
-        [id, finalUserId, name, type, serial_number, description, status || 'Active', photo_url]
-      );
-    } else {
-      // Column doesn't exist or no photo URL
-      result = await client.query(
-        `INSERT INTO properties (id, user_id, name, type, serial_number, description, date_registered, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW(), NOW())
-         RETURNING *`,
-        [id, finalUserId, name, type, serial_number, description, status || 'Active']
+
+    if (!isPropertyType(type)) {
+      return NextResponse.json(
+        { error: "type must be one of Vehicle, Electronics, Jewelry, or Other" },
+        { status: 400 },
       );
     }
-    
-    return NextResponse.json(result.rows[0], { status: 201 });
+
+    if (status && !isPropertyStatus(status)) {
+      return NextResponse.json(
+        { error: "status must be one of Active, Flagged, or Stolen" },
+        { status: 400 },
+      );
+    }
+
+    const finalUserId = user_id || "default-user";
+    const finalUserEmail =
+      typeof user_email === "string" && user_email.includes("@")
+        ? user_email
+        : finalUserId === "default-user"
+          ? "default@catcher.com"
+          : `${finalUserId}@catcher.local`;
+    const finalUserName =
+      typeof user_name === "string" && user_name.trim().length > 0
+        ? user_name.trim()
+        : "Default User";
+    const rawPhotoUrls = parsePhotoUrls(photo_urls);
+    const normalizedPhotoUrls =
+      rawPhotoUrls.length > 0
+        ? rawPhotoUrls.map(normalizeStoredPhotoUrl)
+        : typeof photo_url === "string" && photo_url.trim().length > 0
+          ? [normalizeStoredPhotoUrl(photo_url)]
+          : [];
+
+    const property = await prisma.$transaction(async (tx) => {
+      await tx.user.upsert({
+        where: { id: finalUserId },
+        update: {
+          email: finalUserEmail,
+          name: finalUserName,
+        },
+        create: {
+          id: finalUserId,
+          email: finalUserEmail,
+          name: finalUserName,
+        },
+      });
+
+      return tx.property.create({
+        include: {
+          photos: {
+            orderBy: { uploadedAt: "asc" },
+          },
+        },
+        data: {
+          id: randomUUID(),
+          userId: finalUserId,
+          name,
+          type,
+          serialNumber: serial_number,
+          description: description || null,
+          dateRegistered: body.date_registered
+            ? new Date(body.date_registered)
+            : new Date(),
+          status: status || DEFAULT_PROPERTY_STATUS,
+          photoUrl: normalizedPhotoUrls[0] ?? null,
+          photos: normalizedPhotoUrls.length
+            ? {
+                create: normalizedPhotoUrls.map((fileUrl) => ({
+                  id: randomUUID(),
+                  fileName: extractFileNameFromUrl(fileUrl),
+                  fileUrl,
+                })),
+              }
+            : undefined,
+        },
+      });
+    });
+
+    return NextResponse.json(serializeProperty(property), { status: 201 });
   } catch (error) {
     console.error('Error creating property:', error);
     return NextResponse.json({ error: 'Failed to create property' }, { status: 500 });
-  } finally {
-    client.release();
   }
 }
 
@@ -110,12 +212,10 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
-    
-    const client = await db.connect();
-    const result = await client.query('DELETE FROM properties WHERE id = $1 RETURNING *', [id]);
-    client.release();
-    
-    if (result.rows.length === 0) {
+
+    const result = await prisma.property.deleteMany({ where: { id } });
+
+    if (result.count === 0) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
     
@@ -125,5 +225,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Failed to delete property' }, { status: 500 });
   }
 }
-
-

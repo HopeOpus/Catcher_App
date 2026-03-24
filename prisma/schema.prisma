@@ -1,0 +1,159 @@
+// Prisma Schema for Catcher Application
+// Matches the existing Neon PostgreSQL database tables
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PropertyType {
+  Vehicle
+  Electronics
+  Jewelry
+  Other
+
+  @@map("property_type")
+}
+
+enum PropertyStatus {
+  Active
+  Flagged
+  Stolen
+
+  @@map("property_status")
+}
+
+enum SubscriptionPeriod {
+  monthly
+  yearly
+
+  @@map("subscription_period")
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+
+  @@map("subscription_status")
+}
+
+enum StolenReportStatus {
+  Reported
+  UnderInvestigation
+  Resolved
+
+  @@map("stolen_report_status")
+}
+
+model User {
+  id        String   @id @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  name      String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  properties    Property[]
+  subscriptions Subscription[]
+  stolenReports StolenReport[]
+
+  @@map("users")
+}
+
+model Property {
+  id             String         @id @db.VarChar(255)
+  userId         String         @map("user_id") @db.VarChar(255)
+  name           String         @db.VarChar(255)
+  type           PropertyType
+  serialNumber   String         @map("serial_number") @db.VarChar(255)
+  description    String?        @db.Text
+  dateRegistered DateTime       @default(now()) @map("date_registered") @db.Date
+  status         PropertyStatus @default(Active)
+  photoUrl       String?        @map("photo_url") @db.VarChar(500)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos        PropertyPhoto[]
+  stolenReports StolenReport[]
+
+  @@index([userId])
+  @@index([serialNumber])
+  @@index([type])
+  @@index([status])
+  @@map("properties")
+}
+
+model PropertyPhoto {
+  id         String   @id @db.VarChar(255)
+  propertyId String   @map("property_id") @db.VarChar(255)
+  fileName   String   @map("file_name") @db.VarChar(255)
+  fileUrl    String   @map("file_url") @db.VarChar(500)
+  fileSize   Int?     @map("file_size")
+  fileType   String?  @map("file_type") @db.VarChar(100)
+  uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_photos")
+}
+
+model PreRegisteredProperty {
+  id          String       @id @db.VarChar(255)
+  name        String       @db.VarChar(255)
+  type        PropertyType
+  description String?      @db.Text
+  imageUrl    String?      @map("image_url") @db.VarChar(500)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("pre_registered_properties")
+}
+
+model Subscription {
+  id        String             @id @db.VarChar(255)
+  userId    String             @map("user_id") @db.VarChar(255)
+  planId    String             @map("plan_id") @db.VarChar(50)
+  planName  String             @map("plan_name") @db.VarChar(100)
+  price     Decimal            @db.Decimal(10, 2)
+  period    SubscriptionPeriod
+  status    SubscriptionStatus @default(active)
+  startDate DateTime           @map("start_date") @db.Date
+  endDate   DateTime           @map("end_date") @db.Date
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model StolenReport {
+  id           String             @id @db.VarChar(255)
+  userId       String             @map("user_id") @db.VarChar(255)
+  propertyId   String             @map("property_id") @db.VarChar(255)
+  propertyName String             @map("property_name") @db.VarChar(255)
+  serialNumber String             @map("serial_number") @db.VarChar(255)
+  dateReported DateTime           @default(now()) @map("date_reported") @db.Date
+  location     String             @db.VarChar(500)
+  description  String?            @db.Text
+  status       StolenReportStatus @default(Reported)
+  evidenceUrls String[]           @default([]) @map("evidence_urls") @db.Text
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([serialNumber])
+  @@index([status])
+  @@map("stolen_reports")
+}

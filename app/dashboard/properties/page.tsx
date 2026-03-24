@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { DashboardLayout } from '@/components/dashboard-layout';
@@ -14,7 +15,6 @@ import {
   Eye, 
   Edit, 
   Trash2, 
-  Upload,
   AlertTriangle,
   CheckCircle,
   Image as ImageIcon,
@@ -26,10 +26,16 @@ import {
 } from 'lucide-react';
 import { validateFile, getPreviewUrl, cleanupPreviewUrl } from '@/lib/upload';
 import { ReportStolenModal } from '@/components/report-stolen-modal';
+import {
+  PROPERTY_TYPES,
+  normalizeStoredPhotoUrl,
+  type PropertyStatusValue,
+  type PropertyTypeValue,
+} from '@/lib/catcher-domain';
 
 interface PropertyPhoto {
   id: string;
-  file: File;
+  file?: File;
   preview: string;
   uploaded?: boolean;
   url?: string;
@@ -38,11 +44,11 @@ interface PropertyPhoto {
 interface Property {
   id: string;
   name: string;
-  type: string;
+  type: PropertyTypeValue;
   serialNumber: string;
   description: string;
   dateRegistered: string;
-  status: 'Active' | 'Flagged' | 'Stolen';
+  status: PropertyStatusValue;
   photos: PropertyPhoto[];
 }
 
@@ -175,14 +181,12 @@ export default function PropertiesPage() {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [newProperty, setNewProperty] = useState({
     name: '',
-    type: '',
+    type: '' as PropertyTypeValue | '',
     serialNumber: '',
     description: '',
     photos: [] as PropertyPhoto[]
   });
   const [uploadingPhotos, setUploadingPhotos] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
   
   // Image preview modal state
   const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -209,34 +213,45 @@ export default function PropertiesPage() {
         const transformed = data.map((p: { 
           id: string; 
           name: string; 
-          type: string; 
+          type: PropertyTypeValue; 
           serial_number: string; 
-          description: string; 
+          description: string | null; 
           date_registered: string | Date; 
-          status: string;
+          status: PropertyStatusValue;
           photo_url?: string;
-        }) => ({
-          id: p.id,
-          name: p.name,
-          type: p.type,
-          serialNumber: p.serial_number,
-          description: p.description,
-          dateRegistered: new Date(p.date_registered).toISOString().split('T')[0],
-          status: p.status,
-          photos: p.photo_url ? [{
+          photo_urls?: string[];
+        }) => {
+          const photoUrls =
+            Array.isArray(p.photo_urls) && p.photo_urls.length > 0
+              ? p.photo_urls
+              : p.photo_url
+                ? [p.photo_url]
+                : [];
+
+          return {
             id: p.id,
-            file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
-            preview: p.photo_url.startsWith('/api/uploads/') ? p.photo_url.replace('/api/uploads/', '/uploads/') : p.photo_url,
-            uploaded: true,
-            url: p.photo_url.startsWith('/api/uploads/') ? p.photo_url.replace('/api/uploads/', '/uploads/') : p.photo_url
-          }] : []
-        }));
+            name: p.name,
+            type: p.type,
+            serialNumber: p.serial_number,
+            description: p.description || '',
+            dateRegistered: new Date(p.date_registered).toISOString().split('T')[0],
+            status: p.status,
+            photos: photoUrls.map((photoUrl, index) => {
+              const normalizedUrl = normalizeStoredPhotoUrl(photoUrl);
+
+              return {
+                id: `${p.id}-${index}`,
+                preview: normalizedUrl,
+                uploaded: true,
+                url: normalizedUrl
+              };
+            })
+          };
+        });
         setProperties(transformed);
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -302,7 +317,9 @@ export default function PropertiesPage() {
             description: newProperty.description,
             user_id: 'default-user', // In a real app, get from auth
             status: 'Active',
-            photo_url: uploadedPhotos[0]?.url || null
+            photo_urls: uploadedPhotos
+              .map((photo) => photo.url)
+              .filter((photoUrl): photoUrl is string => Boolean(photoUrl))
           })
         });
 
@@ -350,6 +367,12 @@ export default function PropertiesPage() {
   };
 
   const removePhoto = (photoId: string) => {
+    const photoToRemove = newProperty.photos.find((photo) => photo.id === photoId);
+
+    if (photoToRemove?.preview.startsWith('blob:')) {
+      cleanupPreviewUrl(photoToRemove.preview);
+    }
+
     setNewProperty(prev => ({
       ...prev,
       photos: prev.photos.filter(photo => photo.id !== photoId)
@@ -449,12 +472,24 @@ export default function PropertiesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Property Type</Label>
-                  <Input
+                  <select
                     id="type"
-                    placeholder="e.g., Vehicle, Electronics, Jewelry"
                     value={newProperty.type}
-                    onChange={(e) => setNewProperty({...newProperty, type: e.target.value})}
-                  />
+                    onChange={(e) =>
+                      setNewProperty({
+                        ...newProperty,
+                        type: e.target.value as PropertyTypeValue | '',
+                      })
+                    }
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                  >
+                    <option value="">Select a category</option>
+                    {PROPERTY_TYPES.map((typeOption) => (
+                      <option key={typeOption} value={typeOption}>
+                        {typeOption}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="serial">Serial Number</Label>
@@ -503,9 +538,7 @@ export default function PropertiesPage() {
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center">
                               {uploadingPhotos.includes(photo.id) ? (
-                                <div className="text-white text-xs">
-                                  Uploading... {uploadProgress[photo.id] || 0}%
-                                </div>
+                                <div className="text-white text-xs">Uploading...</div>
                               ) : (
                                 <Button
                                   variant="ghost"
@@ -686,6 +719,7 @@ export default function PropertiesPage() {
               setReportStolenModalOpen(false);
               setSelectedProperty(null);
             }}
+            onReported={fetchProperties}
             propertyId={selectedProperty.id}
             propertyName={selectedProperty.name}
             serialNumber={selectedProperty.serialNumber}

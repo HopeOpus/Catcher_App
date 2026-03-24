@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Cpu, Lock, Sparkles, Zap } from 'lucide-react'
 
 export default function ContentSection() {
@@ -11,7 +12,13 @@ export default function ContentSection() {
                         With Catcher, you can register your items in seconds, instantly report them stolen, and help stop thieves from reselling them.
                     </p>
                 </div>
-                <img className="rounded-(--radius) " src="./app image.svg" alt="team image" height="" width="" loading="lazy" />
+                <Image
+                    className="rounded-(--radius) h-auto w-full"
+                    src="/app image.svg"
+                    alt="Catcher app preview"
+                    width={1200}
+                    height={720}
+                />
 
                 <div className="relative mx-auto grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-8 lg:grid-cols-4">
                     <div className="space-y-3">

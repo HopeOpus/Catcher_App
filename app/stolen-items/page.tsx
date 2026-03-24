@@ -1,8 +1,12 @@
 import { Navigation } from "@/components/navigation";
-import { db } from '@/lib/db/connection';
+import { getStolenReportStatusLabel } from "@/lib/catcher-domain";
+import { prisma } from "@/lib/prisma";
 import { MapPin, Calendar, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import Image from "next/image";
+
+export const dynamic = "force-dynamic";
 
 interface StolenItem {
   id: string;
@@ -16,15 +20,19 @@ interface StolenItem {
 
 async function getStolenItems() {
   try {
-    const client = await db.connect();
-    const query = `
-      SELECT id, property_name, serial_number, date_reported, location, description, status
-      FROM stolen_reports
-      ORDER BY date_reported DESC
-    `;
-    const result = await client.query(query);
-    client.release();
-    return result.rows;
+    const reports = await prisma.stolenReport.findMany({
+      orderBy: { dateReported: "desc" },
+    });
+
+    return reports.map((report) => ({
+      id: report.id,
+      property_name: report.propertyName,
+      serial_number: report.serialNumber,
+      date_reported: report.dateReported.toISOString(),
+      location: report.location ?? "",
+      description: report.description ?? "",
+      status: getStolenReportStatusLabel(report.status),
+    }));
   } catch (error) {
     console.error('Error fetching stolen items:', error);
     return [];
@@ -127,9 +135,11 @@ export default async function StolenItemsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
-              <img 
-                src="/logo2.svg" 
-                alt="Catcher Logo" 
+              <Image
+                src="/logo2.svg"
+                alt="Catcher Logo"
+                width={160}
+                height={32}
                 className="h-8 w-auto"
               />
               <p className="mt-4 text-slate-400 max-w-md">

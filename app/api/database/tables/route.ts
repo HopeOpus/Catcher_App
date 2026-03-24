@@ -43,10 +43,11 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Failed to load tables:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to load tables';
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to load tables' 
+        error: errorMessage
       },
       { status: 500 }
     );

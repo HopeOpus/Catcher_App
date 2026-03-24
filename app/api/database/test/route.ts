@@ -34,10 +34,11 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Database connection test failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Connection failed';
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Connection failed' 
+        error: errorMessage
       },
       { status: 500 }
     );

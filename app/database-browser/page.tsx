@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Database, 
   Table, 
-  Eye, 
   RefreshCw,
   AlertCircle,
-  CheckCircle,
-  Plus,
-  Trash2
+  CheckCircle
 } from 'lucide-react';
 
 interface DatabaseTable {
@@ -24,7 +21,7 @@ interface DatabaseTable {
 
 interface TableData {
   columns: string[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
 }
 
 export default function DatabaseBrowser() {
@@ -32,16 +29,14 @@ export default function DatabaseBrowser() {
   const [tables, setTables] = useState<DatabaseTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [tableData, setTableData] = useState<TableData | null>(null);
-  const [connectionUrl, setConnectionUrl] = useState('');
-  const [message, setMessage] = useState('');
-
-  // Load connection URL from localStorage
-  useEffect(() => {
-    const savedUrl = localStorage.getItem('database_url');
-    if (savedUrl) {
-      setConnectionUrl(savedUrl);
+  const [connectionUrl, setConnectionUrl] = useState(() => {
+    if (typeof window === 'undefined') {
+      return '';
     }
-  }, []);
+
+    return localStorage.getItem('database_url') ?? '';
+  });
+  const [message, setMessage] = useState('');
 
   const testConnection = async () => {
     setConnectionStatus('connecting');
@@ -68,8 +63,9 @@ export default function DatabaseBrowser() {
         setMessage(`❌ Connection failed: ${result.error}`);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Connection failed';
       setConnectionStatus('error');
-      setMessage(`❌ Connection failed: ${error.message}`);
+      setMessage(`❌ Connection failed: ${errorMessage}`);
     }
   };
 
@@ -91,7 +87,8 @@ export default function DatabaseBrowser() {
         setMessage(`❌ Failed to load tables: ${result.error}`);
       }
     } catch (error) {
-      setMessage(`❌ Failed to load tables: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load tables';
+      setMessage(`❌ Failed to load tables: ${errorMessage}`);
     }
   };
 
@@ -117,7 +114,8 @@ export default function DatabaseBrowser() {
         setMessage(`❌ Failed to load table data: ${result.error}`);
       }
     } catch (error) {
-      setMessage(`❌ Failed to load table data: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load table data';
+      setMessage(`❌ Failed to load table data: ${errorMessage}`);
     }
   };
 
@@ -324,13 +322,13 @@ export default function DatabaseBrowser() {
             <div className="space-y-2">
               <h3 className="font-semibold">2. Test Connection</h3>
               <p className="text-sm text-gray-600">
-                Paste the URL in the field above and click "Test Connection".
+                Paste the URL in the field above and click &quot;Test Connection&quot;.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold">3. Explore Data</h3>
               <p className="text-sm text-gray-600">
-                Once connected, you'll see all your tables and can view their data.
+                Once connected, you&apos;ll see all your tables and can view their data.
               </p>
             </div>
           </div>

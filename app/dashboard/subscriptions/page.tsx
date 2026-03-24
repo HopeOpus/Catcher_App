@@ -9,12 +9,9 @@ import {
   CreditCard, 
   Check, 
   X, 
-  Zap, 
   Shield, 
-  Users, 
   BarChart3,
-  Calendar,
-  DollarSign
+  Calendar
 } from 'lucide-react';
 
 interface Plan {

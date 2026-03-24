@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { InfiniteSlider } from '@/components/motion-primitives/infinite-slider'
 import { ProgressiveBlur } from '@/components/motion-primitives/progressive-blur'
 

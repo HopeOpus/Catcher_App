@@ -3,10 +3,10 @@
 import * as React from 'react';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import { Menu, X, Home, Building2, CreditCard, LogOut } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 const navigationItems = [
@@ -71,11 +71,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <img 
-                src="/logo2.svg" 
-                alt="Catcher Logo" 
-                className="h-8 w-auto"
-              />
+            <Image
+              src="/logo2.svg"
+              alt="Catcher Logo"
+              width={160}
+              height={32}
+              className="h-8 w-auto"
+            />
           </div>
           <UserButton afterSignOutUrl="/" />
         </div>
@@ -86,9 +88,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className='flex'>
-              <img 
-                src="/logo2.svg" 
-                alt="Catcher Logo" 
+              <Image
+                src="/logo2.svg"
+                alt="Catcher Logo"
+                width={160}
+                height={32}
                 className="h-8 w-auto mr-0"
               />
               <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>

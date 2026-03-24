@@ -1,5 +1,6 @@
 'use client'
 
+import Image from "next/image";
 import { SignIn } from "@clerk/nextjs";
 
 export default function SignInPage() {
@@ -9,7 +10,14 @@ export default function SignInPage() {
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-2">
             <h1 className="text-3xl font-bold text-slate-900">Welcome Back to</h1>
-            <img src="/catcher-logo.svg" alt="catcher-logo" className="h-10 w-auto" />
+            <Image
+              src="/catcher-logo.svg"
+              alt="Catcher logo"
+              width={160}
+              height={40}
+              className="h-10 w-auto"
+              priority
+            />
           </div>
           <p className="text-slate-600">Sign in to your Catcher account</p>
         </div>

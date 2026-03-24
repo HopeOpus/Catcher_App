@@ -13,37 +13,56 @@ interface ReportStolenModalProps {
   propertyId: string;
   propertyName: string;
   serialNumber: string;
+  onReported?: () => Promise<void> | void;
 }
 
-export function ReportStolenModal({ isOpen, onClose, propertyId, propertyName, serialNumber }: ReportStolenModalProps) {
+export function ReportStolenModal({
+  isOpen,
+  onClose,
+  propertyId,
+  propertyName,
+  serialNumber,
+  onReported,
+}: ReportStolenModalProps) {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage('');
 
     try {
-      // TODO: Implement actual API call to create stolen report
-      console.log('Submitting stolen report:', {
-        propertyId,
-        propertyName,
-        serialNumber,
-        location,
-        description,
-        dateReported: new Date().toISOString()
+      const response = await fetch('/api/stolen-reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: propertyId,
+          location,
+          description,
+        }),
       });
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Failed to submit stolen report');
+      }
       
-      // Close modal and reset form
       setLocation('');
       setDescription('');
+      await onReported?.();
       onClose();
     } catch (error) {
       console.error('Error submitting stolen report:', error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to submit stolen report',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -109,6 +128,12 @@ export function ReportStolenModal({ isOpen, onClose, propertyId, propertyName, s
               rows={4}
             />
           </div>
+
+          {errorMessage ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          ) : null}
 
           <div className="flex justify-end space-x-3 pt-2">
             <Button

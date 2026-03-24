@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Footer() {
   return (
@@ -6,9 +7,11 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <img 
-              src="/logo2.svg" 
-              alt="Catcher Logo" 
+            <Image
+              src="/logo2.svg"
+              alt="Catcher Logo"
+              width={160}
+              height={32}
               className="h-8 w-auto"
             />
             <p className="mt-4 text-slate-400 max-w-md">

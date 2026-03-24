@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export function CTASection() {
   return (
@@ -14,14 +14,20 @@ export function CTASection() {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-        
-            <img src="/playstore.png" alt="Play Store" className="h-13 w-47 " />
-            
-          
-          
-            <img src="/ios.png" alt="App Store" className="h-13 w-47 " />
-            
-         
+          <Image
+            src="/playstore.png"
+            alt="Play Store"
+            width={188}
+            height={52}
+            className="h-13 w-47"
+          />
+          <Image
+            src="/ios.png"
+            alt="App Store"
+            width={188}
+            height={52}
+            className="h-13 w-47"
+          />
         </div>
 
         <div className="mt-12 flex flex-col sm:flex-row gap-8 justify-center items-center text-blue-100">
