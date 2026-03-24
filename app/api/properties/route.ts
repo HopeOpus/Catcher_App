@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   DEFAULT_PROPERTY_STATUS,
@@ -151,50 +152,52 @@ export async function POST(request: Request) {
           ? [normalizeStoredPhotoUrl(photo_url)]
           : [];
 
-    const property = await prisma.$transaction(async (tx) => {
-      await tx.user.upsert({
-        where: { id: finalUserId },
-        update: {
-          email: finalUserEmail,
-          name: finalUserName,
-        },
-        create: {
-          id: finalUserId,
-          email: finalUserEmail,
-          name: finalUserName,
-        },
-      });
-
-      return tx.property.create({
-        include: {
-          photos: {
-            orderBy: { uploadedAt: "asc" },
+    const property = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        await tx.user.upsert({
+          where: { id: finalUserId },
+          update: {
+            email: finalUserEmail,
+            name: finalUserName,
           },
-        },
-        data: {
-          id: randomUUID(),
-          userId: finalUserId,
-          name,
-          type,
-          serialNumber: serial_number,
-          description: description || null,
-          dateRegistered: body.date_registered
-            ? new Date(body.date_registered)
-            : new Date(),
-          status: status || DEFAULT_PROPERTY_STATUS,
-          photoUrl: normalizedPhotoUrls[0] ?? null,
-          photos: normalizedPhotoUrls.length
-            ? {
-                create: normalizedPhotoUrls.map((fileUrl) => ({
-                  id: randomUUID(),
-                  fileName: extractFileNameFromUrl(fileUrl),
-                  fileUrl,
-                })),
-              }
-            : undefined,
-        },
-      });
-    });
+          create: {
+            id: finalUserId,
+            email: finalUserEmail,
+            name: finalUserName,
+          },
+        });
+
+        return tx.property.create({
+          include: {
+            photos: {
+              orderBy: { uploadedAt: "asc" },
+            },
+          },
+          data: {
+            id: randomUUID(),
+            userId: finalUserId,
+            name,
+            type,
+            serialNumber: serial_number,
+            description: description || null,
+            dateRegistered: body.date_registered
+              ? new Date(body.date_registered)
+              : new Date(),
+            status: status || DEFAULT_PROPERTY_STATUS,
+            photoUrl: normalizedPhotoUrls[0] ?? null,
+            photos: normalizedPhotoUrls.length
+              ? {
+                  create: normalizedPhotoUrls.map((fileUrl) => ({
+                    id: randomUUID(),
+                    fileName: extractFileNameFromUrl(fileUrl),
+                    fileUrl,
+                  })),
+                }
+              : undefined,
+          },
+        });
+      },
+    );
 
     return NextResponse.json(serializeProperty(property), { status: 201 });
   } catch (error) {

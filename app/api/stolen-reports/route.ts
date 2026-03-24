@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   DEFAULT_STOLEN_REPORT_STATUS,
@@ -110,31 +111,33 @@ export async function POST(request: Request) {
       ? body.status
       : DEFAULT_STOLEN_REPORT_STATUS;
 
-    const report = await prisma.$transaction(async (tx) => {
-      const createdReport = await tx.stolenReport.create({
-        data: {
-          id: randomUUID(),
-          userId: property.userId,
-          propertyId: property.id,
-          propertyName: property.name,
-          serialNumber: property.serialNumber,
-          dateReported: body.date_reported
-            ? new Date(body.date_reported)
-            : new Date(),
-          location,
-          description,
-          status: finalStatus,
-          evidenceUrls,
-        },
-      });
+    const report = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const createdReport = await tx.stolenReport.create({
+          data: {
+            id: randomUUID(),
+            userId: property.userId,
+            propertyId: property.id,
+            propertyName: property.name,
+            serialNumber: property.serialNumber,
+            dateReported: body.date_reported
+              ? new Date(body.date_reported)
+              : new Date(),
+            location,
+            description,
+            status: finalStatus,
+            evidenceUrls,
+          },
+        });
 
-      await tx.property.update({
-        where: { id: property.id },
-        data: { status: "Stolen" },
-      });
+        await tx.property.update({
+          where: { id: property.id },
+          data: { status: "Stolen" },
+        });
 
-      return createdReport;
-    });
+        return createdReport;
+      },
+    );
 
     return NextResponse.json(serializeStolenReport(report), { status: 201 });
   } catch (error) {
