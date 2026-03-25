@@ -24,7 +24,7 @@ async function getStolenItems() {
       orderBy: { dateReported: "desc" },
     });
 
-    return reports.map((report) => ({
+    return reports.map((report: (typeof reports)[number]) => ({
       id: report.id,
       property_name: report.propertyName,
       serial_number: report.serialNumber,

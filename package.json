@@ -13,7 +13,8 @@
     "db:remote:sync": "node scripts/sync-remote-schema.mjs",
     "db:seed": "node prisma/seed.mjs",
     "db:sync": "npm run db:remote:sync && npm run db:seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.60.0",

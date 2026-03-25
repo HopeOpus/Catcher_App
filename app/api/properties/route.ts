@@ -73,46 +73,24 @@ function parsePhotoUrls(value: unknown): string[] {
 
 // GET - Fetch all properties or filter by user
 export async function GET(request: Request) {
-  const client = await db.connect();
-
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    
-    // First check if photo_url column exists
-    const client = await db.connect();
-    let query = 'SELECT id, user_id, name, type, serial_number, description, date_registered, status, created_at, updated_at';
-    
-    try {
-      const columnCheck = await client.query(
-        `SELECT column_name FROM information_schema.columns 
-         WHERE table_name = 'properties' AND column_name = 'photo_url'`
-      );
-      if (columnCheck.rows.length > 0) {
-        query = 'SELECT * FROM properties';
-      }
-    } catch {
-      // Column doesn't exist, use basic query
-    }
-    
-    let params: string[] = [];
-    
-    if (userId) {
-      query += ' WHERE user_id = $1';
-      params = [userId];
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    const result = await client.query(query, params);
-    client.release();
-    
-    return NextResponse.json(result.rows);
+
+    const properties = await prisma.property.findMany({
+      where: userId ? { userId } : undefined,
+      include: {
+        photos: {
+          orderBy: { uploadedAt: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(properties.map(serializeProperty));
   } catch (error) {
     console.error('Error fetching properties:', error);
     return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 });
-  } finally {
-    client.release();
   }
 }
 
@@ -230,8 +208,6 @@ export async function POST(request: Request) {
 
 // DELETE - Delete a property
 export async function DELETE(request: Request) {
-  const client = await db.connect();
-
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -239,20 +215,16 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
-    
-    const client = await db.connect();
-    const result = await client.query('DELETE FROM properties WHERE id = $1 RETURNING *', [id]);
-    client.release();
-    
-    if (result.rows.length === 0) {
+
+    const result = await prisma.property.deleteMany({ where: { id } });
+
+    if (result.count === 0) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json({ success: true, message: 'Property deleted successfully' });
   } catch (error) {
     console.error('Error deleting property:', error);
     return NextResponse.json({ error: 'Failed to delete property' }, { status: 500 });
-  } finally {
-    client.release();
   }
 }
