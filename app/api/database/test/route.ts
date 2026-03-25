@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
 export async function POST(request: Request) {
+  let pool: Pool | null = null;
+  let client: PoolClient | null = null;
+
   try {
     const { connectionUrl } = await request.json();
 
@@ -13,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Create a test connection
-    const pool = new Pool({
+    pool = new Pool({
       connectionString: connectionUrl,
       ssl: {
         rejectUnauthorized: false
@@ -21,10 +24,8 @@ export async function POST(request: Request) {
     });
 
     // Test the connection
-    const client = await pool.connect();
+    client = await pool.connect();
     const result = await client.query('SELECT NOW() as current_time');
-    client.release();
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -42,5 +43,8 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  } finally {
+    client?.release();
+    await pool?.end();
   }
 }

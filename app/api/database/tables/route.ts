@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
 export async function POST(request: Request) {
+  let pool: Pool | null = null;
+  let client: PoolClient | null = null;
+
   try {
     const { connectionUrl } = await request.json();
 
@@ -13,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Create a connection
-    const pool = new Pool({
+    pool = new Pool({
       connectionString: connectionUrl,
       ssl: {
         rejectUnauthorized: false
@@ -21,24 +24,29 @@ export async function POST(request: Request) {
     });
 
     // Get all tables from the database
-    const client = await pool.connect();
+    client = await pool.connect();
     
-    // Query to get all tables in the public schema
     const tablesResult = await client.query(`
-      SELECT table_name, 
-             (SELECT COUNT(*) FROM information_schema.tables t2 
-              WHERE t2.table_name = t1.table_name) as row_count
-      FROM information_schema.tables t1
-      WHERE table_schema = 'public'
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
       ORDER BY table_name
     `);
 
-    client.release();
-    await pool.end();
+    const tables = [];
+    for (const row of tablesResult.rows as Array<{ table_name: string }>) {
+      const safeTableName = `"${row.table_name.replace(/"/g, '""')}"`;
+      const countResult = await client.query(`SELECT COUNT(*)::int AS row_count FROM ${safeTableName}`);
+
+      tables.push({
+        table_name: row.table_name,
+        row_count: Number(countResult.rows[0]?.row_count ?? 0),
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      tables: tablesResult.rows
+      tables
     });
 
   } catch (error) {
@@ -51,5 +59,8 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  } finally {
+    client?.release();
+    await pool?.end();
   }
 }

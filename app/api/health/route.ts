@@ -4,7 +4,7 @@ import { checkDatabaseConnection } from "@/lib/prisma";
 export async function GET() {
   try {
     const dbConnected = await checkDatabaseConnection();
-
+    
     const healthCheck = {
       status: dbConnected ? "ok" : "error",
       timestamp: new Date().toISOString(),
@@ -14,6 +14,10 @@ export async function GET() {
         status: dbConnected ? "connected" : "disconnected",
         connection: process.env.DATABASE_URL ? "configured" : "not configured",
       },
+      services: {
+        nextauth: process.env.NEXTAUTH_SECRET ? 'configured' : 'not configured',
+        cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? 'configured' : 'not configured'
+      }
     };
 
     if (!dbConnected) {
