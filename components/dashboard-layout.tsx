@@ -1,29 +1,117 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
-import { Menu, X, Home, Building2, CreditCard, LogOut } from 'lucide-react';
+import { Menu, X, Home, Building2, CreditCard, LogOut, AlertTriangle, User, Bell, ReceiptText } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
+import { ProfileCompletionModal } from '@/components/profile-completion-modal';
+import {
+  PROFILE_UPDATED_EVENT,
+  type UserProfileStatus,
+} from '@/lib/profile';
 
 const navigationItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/properties', label: 'Registered Properties', icon: Building2 },
+  { href: '/dashboard/stolen-reports', label: 'Stolen Reports', icon: AlertTriangle },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: CreditCard },
+  { href: '/dashboard/receipts', label: 'Billing History', icon: ReceiptText },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const { signOut } = useAuth();
+  const [profileStatus, setProfileStatus] = React.useState<UserProfileStatus | null>(null);
+  const [isProfileModalDismissed, setIsProfileModalDismissed] = React.useState(false);
+  const { signOut, isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadProfileStatus = async () => {
+      try {
+        const response = await fetch('/api/profile', {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as UserProfileStatus;
+
+        if (isActive) {
+          setProfileStatus(data);
+          if (data.profileComplete) {
+            setIsProfileModalDismissed(false);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user profile status:', error);
+      }
+    };
+
+    void loadProfileStatus();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isLoaded, isSignedIn]);
+
+  React.useEffect(() => {
+    const handleProfileUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<UserProfileStatus>;
+      setProfileStatus(customEvent.detail);
+      setIsProfileModalDismissed(false);
+    };
+
+    window.addEventListener(
+      PROFILE_UPDATED_EVENT,
+      handleProfileUpdated as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        PROFILE_UPDATED_EVENT,
+        handleProfileUpdated as EventListener,
+      );
+    };
+  }, []);
+
+  React.useEffect(() => {
+    setIsProfileModalDismissed(false);
+  }, [pathname]);
+
+  const getNavigationItemClasses = (href: string) =>
+    cn(
+      'flex items-center space-x-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
+      pathname === href
+        ? 'bg-[#36689e]/10 text-[#0F2651]'
+        : 'text-gray-700 hover:bg-gray-100 hover:text-[#0F2651]',
+    );
+
+  const shouldShowProfileCompletionModal =
+    Boolean(profileStatus && !profileStatus.profileComplete) &&
+    !isProfileModalDismissed &&
+    pathname !== '/dashboard/profile';
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center space-x-4">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -43,12 +131,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {navigationItems.map((item) => (
                           <NavigationMenuItem key={item.href}>
                             <NavigationMenuLink
-                              href={item.href}
-                              className="flex items-center space-x-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                              asChild
+                              className="w-full"
                               onClick={() => setIsMobileMenuOpen(false)}
                             >
-                              <item.icon className="h-4 w-4 text-[#36689e]" />
-                              <span>{item.label}</span>
+                              <Link
+                                href={item.href}
+                                className={getNavigationItemClasses(item.href)}
+                              >
+                                <item.icon className="h-4 w-4 text-[#36689e]" />
+                                <span>{item.label}</span>
+                              </Link>
                             </NavigationMenuLink>
                           </NavigationMenuItem>
                         ))}
@@ -84,18 +177,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block fixed inset-y-0 left-2 z-50 w-80 bg-white border-r border-gray-200">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-gray-200 bg-white xl:w-80 lg:block">
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div className='flex'>
+            <div className="flex items-center gap-3">
               <Image
                 src="/logo2.svg"
                 alt="Catcher Logo"
                 width={160}
                 height={32}
-                className="h-8 w-auto mr-0"
+                className="h-8 w-auto"
               />
-              <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>
+              <span className="text-3xl font-semibold tracking-tighter text-[#1c1c1c]">
+                Catcher
+              </span>
             </div>
             <UserButton afterSignOutUrl="/" />
           </div>
@@ -103,17 +198,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <nav className="flex-1 overflow-y-auto py-6">
             <div className="space-y-2 px-4">
               {navigationItems.map((item) => (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    "flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-md transition-colors",
-                    "text-gray-700 hover:bg-gray-100 hover:text-[#0F2651]"
-                  )}
+                  className={getNavigationItemClasses(item.href)}
                 >
                   <item.icon className="h-5 w-5 text-[#36689e]" />
                   <span>{item.label}</span>
-                </a>
+                </Link>
               ))}
             </div>
           </nav>
@@ -134,11 +226,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-30">
-        <div className="min-h-screen">
-          {children}
+      <main className="min-w-0 lg:pl-72 xl:pl-80">
+        <div className="min-h-screen overflow-x-hidden">
+          <div className="w-full px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+            {children}
+          </div>
         </div>
       </main>
+
+      <ProfileCompletionModal
+        profileStatus={profileStatus}
+        isOpen={shouldShowProfileCompletionModal}
+        onDismiss={() => {
+          setIsProfileModalDismissed(true);
+        }}
+        onCompleted={(updatedProfileStatus) => {
+          setProfileStatus(updatedProfileStatus);
+          setIsProfileModalDismissed(false);
+        }}
+      />
     </div>
   );
 }

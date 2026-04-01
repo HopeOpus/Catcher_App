@@ -1,106 +1,118 @@
-import { Button } from "@/components/ui/button";
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { buildSupportMailto } from '@/lib/support'
 
 export function PricingSection() {
+  const enterpriseContactLink = buildSupportMailto({
+    subject: 'Catcher Enterprise plan enquiry',
+    body: [
+      'Hello Catcher team,',
+      '',
+      'I would like to learn more about the Enterprise plan.',
+      '',
+      'Organisation or use case:',
+      'Number of assets or users:',
+      'What I need help with:',
+      '',
+      'Thank you.',
+    ].join('\n'),
+  })
+
   const plans = [
     {
-      name: "Basic",
-      price: "$1",
-      period: "per Item/monthly",
-      description: "Perfect for individuals, Monthly Payments",
+      name: 'Basic',
+      price: 'Free',
+      period: 'to start',
+      description: 'A simple starting point for personal use.',
       features: [
-       
-        "Basic task management",
-        "File sharing (500MB)",
-        "Email support",
-        "Mobile app access"
+        'Register up to 5 properties',
+        'Property dashboard access',
+        'Basic stolen reporting',
+        'Email support',
       ],
-      cta: "Get Started",
-      popular: true
+      cta: 'Create Free Account',
+      href: '/auth/signup',
+      popular: false,
     },
     {
-      name: "Pro",
-      price: "$5",
-      period: "per Item/Anually",
-      description: "For growing teams and professionals",
+      name: 'Premium',
+      price: '$9.99',
+      period: 'per month',
+      description: 'For active users who need stronger monitoring and support.',
       features: [
-       
-        "Advanced task management",
-        "File sharing (5GB)",
-        "Priority email support",
-        "Mobile app access",
-        "Custom workflows",
-        "Advanced analytics",
-        "Team collaboration"
+        'Unlimited property registration',
+        'Priority theft alerts',
+        'Evidence and tracking support',
+        'Priority assistance from the Catcher team',
       ],
-      cta: "Start Free Trial",
-      popular: false
+      cta: 'Start with Catcher',
+      href: '/auth/signup',
+      popular: true,
     },
     {
-      name: "Enterprise",
-      price: "Contact Us",
-      description: "For large organizations with advanced needs",
+      name: 'Enterprise',
+      price: 'Contact Us',
+      period: 'for pricing',
+      description: 'For large organizations with advanced needs.',
       features: [
-        "Everything in Pro",
-        "Unlimited file storage",
-        "24/7 phone & email support",
-        "Custom integrations",
-        "Advanced security features",
-        "Dedicated account manager",
-        "SSO & SAML",
-        "Custom SLA"
+        'Everything in Premium',
+        'Bulk property management',
+        'Dedicated account assistance',
+        'Dedicated account manager',
+        'Custom operational support',
       ],
-      cta: "Contact Sales",
-      popular: false
-    }
-  ];
+      cta: 'Talk to Catcher',
+      href: enterpriseContactLink,
+      popular: false,
+    },
+  ]
 
   return (
-    <section className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-[#0F2651] mb-4">
+    <section id="pricing" className="bg-white py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <h2 className="mb-4 text-4xl font-bold text-[#0F2651] md:text-5xl">
             Simple, Transparent
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#336699] to-[#0F2651]">
+            <span className="block bg-gradient-to-r from-[#336699] to-[#0F2651] bg-clip-text text-transparent">
               Pricing
             </span>
           </h2>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            Choose the plan that fits your needs. All plans include a 14-day free trial. 
-            No credit card required.
+          <p className="mx-auto max-w-3xl text-xl text-slate-600">
+            Choose the plan that fits your needs. Public pricing matches the real
+            subscription options available inside Catcher.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((plan, index) => (
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {plans.map((plan) => (
             <div
-              key={index}
-              className={`relative bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl shadow-lg border-2 ${
-                plan.popular 
-                  ? "border-[#36689e]/50 bg-gradient-to-br from-[#f0f5fa] to-white" 
-                  : "border-slate-200/50"
-              } hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-[#336699] to-[#0F2651] text-white px-4 py-1 rounded-full text-sm font-medium">
-                    Most Popular
+              key={plan.name}
+              className={`relative rounded-2xl border-2 bg-gradient-to-br from-white to-slate-50 p-8 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl ${
+                plan.popular
+                  ? 'border-[#36689e]/50 bg-gradient-to-br from-[#f0f5fa] to-white'
+                  : 'border-slate-200/50'
+              }`}>
+              {plan.popular ? (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 transform">
+                  <span className="rounded-full bg-gradient-to-r from-[#336699] to-[#0F2651] px-4 py-1 text-sm font-medium text-white">
+                    Recommended
                   </span>
                 </div>
-              )}
-              
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.name}</h3>
+              ) : null}
+
+              <div className="mb-8 text-center">
+                <h3 className="mb-2 text-2xl font-bold text-slate-900">{plan.name}</h3>
                 <div className="mb-4">
                   <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
-                  <span className="text-slate-600 ml-2">/{plan.period}</span>
+                  <span className="ml-2 text-slate-600">{plan.period}</span>
                 </div>
-                <p className="text-slate-600 text-sm">{plan.description}</p>
+                <p className="text-sm text-slate-600">{plan.description}</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                {plan.features.map((feature, featureIndex) => (
-                  <li key={featureIndex} className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <ul className="mb-8 space-y-4">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-slate-700">{feature}</span>
@@ -108,14 +120,18 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              <Button 
-                className={`w-full py-3 text-lg font-semibold border-radius-2xl ${
+              <Button
+                asChild
+                className={`w-full border-radius-2xl py-3 text-lg font-semibold transition-all duration-200 hover:-translate-y-1 ${
                   plan.popular
-                    ? "bg-gradient-to-r from-[#336699] to-[#0F2651] hover:from-[#0F2651] hover:to-[#0F2651] text-white shadow-lg border-radius-2xl border-[#36689e]"
-                    : "bg-white text-[#0F2651] border-radius-2xl border-slate-300 hover:bg-slate-100"
-                } transition-all duration-200 transform hover:-translate-y-1`}
-              >
-                {plan.cta}
+                    ? 'border-[#36689e] bg-gradient-to-r from-[#336699] to-[#0F2651] text-white'
+                    : 'border-slate-300 bg-white text-[#0F2651]'
+                }`}>
+                {plan.name === 'Enterprise' ? (
+                  <a href={plan.href}>{plan.cta}</a>
+                ) : (
+                  <Link href={plan.href}>{plan.cta}</Link>
+                )}
               </Button>
             </div>
           ))}
@@ -123,13 +139,13 @@ export function PricingSection() {
 
         <div className="mt-12 text-center">
           <p className="text-slate-600">
-            Looking for custom solutions?{" "}
-            <a href="#" className="text-[#36689e] hover:text-[#0F2651] font-medium">
-              Contact our sales team
+            Need help choosing a plan or billing path?{' '}
+            <a href={enterpriseContactLink} className="font-medium text-[#36689e] hover:text-[#0F2651]">
+              Contact the Catcher team
             </a>
           </p>
         </div>
       </div>
     </section>
-  );
+  )
 }

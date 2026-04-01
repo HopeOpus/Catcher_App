@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   DEFAULT_PROPERTY_STATUS,
@@ -10,6 +9,12 @@ import {
   type PropertyStatusValue,
   type PropertyTypeValue,
 } from "@/lib/catcher-domain";
+import {
+  getAuthenticatedAppUser,
+  syncAuthenticatedAppUserRecord,
+} from "@/lib/authenticated-user";
+import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import { parseSubmittedPhotoUrls } from "@/lib/property-payload";
 import { prisma } from "@/lib/prisma";
 
 type PropertyRecord = {
@@ -60,25 +65,24 @@ function serializeProperty(property: PropertyRecord) {
   };
 }
 
-function parsePhotoUrls(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(
-    (photoUrl): photoUrl is string =>
-      typeof photoUrl === "string" && photoUrl.trim().length > 0,
-  );
-}
-
-// GET - Fetch all properties or filter by user
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const authenticatedUser = await getAuthenticatedAppUser();
+
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+    await syncPropertyLifecycle(prisma, {
+      userId: authenticatedUser.userId,
+    });
 
     const properties = await prisma.property.findMany({
-      where: userId ? { userId } : undefined,
+      where: {
+        userId: authenticatedUser.userId,
+        archivedAt: null,
+      },
       include: {
         photos: {
           orderBy: { uploadedAt: "asc" },
@@ -97,12 +101,22 @@ export async function GET(request: Request) {
 
 // POST - Create a new property
 export async function POST(request: Request) {
+  void request;
+
+  return NextResponse.json(
+    {
+      error:
+        "New property registration now starts through the property checkout flow. Use /api/property-checkout-sessions instead.",
+    },
+    { status: 405 },
+  );
+}
+
+export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const {
-      user_id,
-      user_email,
-      user_name,
+      id,
       name,
       type,
       serial_number,
@@ -110,11 +124,12 @@ export async function POST(request: Request) {
       status,
       photo_url,
       photo_urls,
+      date_registered,
     } = body;
 
-    if (!name || !type || !serial_number) {
+    if (!id || !name || !type || !serial_number) {
       return NextResponse.json(
-        { error: "name, type, and serial_number are required" },
+        { error: "id, name, type, and serial_number are required" },
         { status: 400 },
       );
     }
@@ -133,82 +148,97 @@ export async function POST(request: Request) {
       );
     }
 
-    const finalUserId = user_id || "default-user";
-    const finalUserEmail =
-      typeof user_email === "string" && user_email.includes("@")
-        ? user_email
-        : finalUserId === "default-user"
-          ? "default@catcher.com"
-          : `${finalUserId}@catcher.local`;
-    const finalUserName =
-      typeof user_name === "string" && user_name.trim().length > 0
-        ? user_name.trim()
-        : "Default User";
-    const rawPhotoUrls = parsePhotoUrls(photo_urls);
-    const normalizedPhotoUrls =
-      rawPhotoUrls.length > 0
-        ? rawPhotoUrls.map(normalizeStoredPhotoUrl)
-        : typeof photo_url === "string" && photo_url.trim().length > 0
-          ? [normalizeStoredPhotoUrl(photo_url)]
-          : [];
+    const authenticatedUser = await getAuthenticatedAppUser();
 
-    const property = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        await tx.user.upsert({
-          where: { id: finalUserId },
-          update: {
-            email: finalUserEmail,
-            name: finalUserName,
-          },
-          create: {
-            id: finalUserId,
-            email: finalUserEmail,
-            name: finalUserName,
-          },
-        });
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-        return tx.property.create({
-          include: {
-            photos: {
-              orderBy: { uploadedAt: "asc" },
-            },
-          },
-          data: {
-            id: randomUUID(),
-            userId: finalUserId,
-            name,
-            type,
-            serialNumber: serial_number,
-            description: description || null,
-            dateRegistered: body.date_registered
-              ? new Date(body.date_registered)
-              : new Date(),
-            status: status || DEFAULT_PROPERTY_STATUS,
-            photoUrl: normalizedPhotoUrls[0] ?? null,
-            photos: normalizedPhotoUrls.length
-              ? {
-                  create: normalizedPhotoUrls.map((fileUrl) => ({
-                    id: randomUUID(),
-                    fileName: extractFileNameFromUrl(fileUrl),
-                    fileUrl,
-                  })),
-                }
-              : undefined,
-          },
-        });
+    const submittedPhotoUrls = parseSubmittedPhotoUrls(photo_urls, photo_url);
+
+    if (submittedPhotoUrls.invalid) {
+      return NextResponse.json(
+        {
+          error:
+            "One or more photo uploads were not persisted. Please re-upload your photos and try again.",
+        },
+        { status: 400 },
+      );
+    }
+
+    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+    await syncPropertyLifecycle(prisma, {
+      userId: authenticatedUser.userId,
+      propertyId: id,
+    });
+
+    const existingProperty = await prisma.property.findFirst({
+      where: {
+        id,
+        userId: authenticatedUser.userId,
+        archivedAt: null,
       },
-    );
+      select: { id: true },
+    });
 
-    return NextResponse.json(serializeProperty(property), { status: 201 });
+    if (!existingProperty) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    }
+
+    const property = await prisma.property.update({
+      where: { id },
+      include: {
+        photos: {
+          orderBy: { uploadedAt: "asc" },
+        },
+      },
+      data: {
+        name,
+        type,
+        serialNumber: serial_number,
+        description: description || null,
+        dateRegistered: date_registered ? new Date(date_registered) : undefined,
+        status: status || DEFAULT_PROPERTY_STATUS,
+        photoUrl: submittedPhotoUrls.urls[0] ?? null,
+        photos: {
+          deleteMany: {},
+          create: submittedPhotoUrls.urls.map((fileUrl) => ({
+            id: randomUUID(),
+            fileName: extractFileNameFromUrl(fileUrl),
+            fileUrl,
+          })),
+        },
+      },
+    });
+
+    return NextResponse.json(serializeProperty(property));
   } catch (error) {
-    console.error('Error creating property:', error);
-    return NextResponse.json({ error: 'Failed to create property' }, { status: 500 });
+    console.error("Error updating property:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update property";
+
+    return NextResponse.json(
+      {
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Failed to update property"
+            : errorMessage,
+      },
+      { status: 500 },
+    );
   }
 }
 
 // DELETE - Delete a property
 export async function DELETE(request: Request) {
   try {
+    const authenticatedUser = await getAuthenticatedAppUser();
+
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -216,7 +246,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
 
-    const result = await prisma.property.deleteMany({ where: { id } });
+    await syncPropertyLifecycle(prisma, {
+      userId: authenticatedUser.userId,
+      propertyId: id,
+    });
+
+    const result = await prisma.property.deleteMany({
+      where: { id, userId: authenticatedUser.userId, archivedAt: null },
+    });
 
     if (result.count === 0) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });

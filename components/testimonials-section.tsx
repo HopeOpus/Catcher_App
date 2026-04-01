@@ -1,97 +1,73 @@
-/* eslint-disable @next/next/no-img-element */
 export function TestimonialsSection() {
-  const testimonials = [
+  const useCases = [
     {
-      name: "Sarah Johnson",
-      role: "Product Manager",
-      company: "TechCorp Inc.",
-      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-      quote: "Catcher has completely transformed how our team collaborates. We've seen a 40% increase in productivity and our project delivery times have improved dramatically.",
-      rating: 5
+      title: 'Document ownership properly',
+      description:
+        'Keep the photos, serial numbers, and notes that make your property easier to identify when proof matters most.',
     },
     {
-      name: "Marcus Chen",
-      role: "CTO",
-      company: "StartupXYZ",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      quote: "The analytics and reporting features are incredible. We can now make data-driven decisions about our development process and resource allocation.",
-      rating: 5
+      title: 'Respond faster to theft',
+      description:
+        'Move from a stored item record to a stolen report quickly, instead of searching old chats, receipts, and image folders.',
     },
     {
-      name: "Emily Rodriguez",
-      role: "Team Lead",
-      company: "DesignStudio",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      quote: "Our clients love the transparency Catcher provides. They can see project progress in real-time, which has significantly improved our client relationships.",
-      rating: 5
-    }
-  ];
+      title: 'Check before you buy',
+      description:
+        'Search reported items before purchasing second-hand goods so you can avoid suspicious property with more confidence.',
+    },
+  ]
 
   return (
-    <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-[#0F2651] mb-4">
-            Loved by Individuals
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#336699] to-[#0F2651]">
-              Worldwide
+    <section className="bg-gradient-to-br from-slate-50 via-white to-slate-100 py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <h2 className="mb-4 text-4xl font-bold text-[#0F2651] md:text-5xl">
+            Why people choose
+            <span className="block bg-gradient-to-r from-[#336699] to-[#0F2651] bg-clip-text text-transparent">
+              Catcher
             </span>
           </h2>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            Join thousands of individuals who have transformed their property security with Catcher. 
-            Here`s what they have to say about their experience.
+          <p className="mx-auto max-w-3xl text-xl text-slate-600">
+            Catcher is most useful when it reduces confusion. These are the three
+            jobs the platform is designed to handle well.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {useCases.map((item) => (
             <div
-              key={index}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200/50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <img
-                  src={testimonial.image}
-                  alt={testimonial.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-                <div>
-                  <h4 className="text-lg font-semibold text-slate-900">{testimonial.name}</h4>
-                  <p className="text-slate-600">{testimonial.role} at {testimonial.company}</p>
-                </div>
+              key={item.title}
+              className="rounded-2xl border border-slate-200/50 bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+              <div className="mb-6 inline-flex rounded-full bg-[#36689e]/10 px-4 py-2 text-sm font-semibold text-[#0F2651]">
+                Core workflow
               </div>
-              
-              <div className="flex gap-1 mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.402 8.17L12 18.896l-7.336 3.881 1.4-8.17L.13 9.211l8.2-1.193z"/>
-                  </svg>
-                ))}
-              </div>
-
-              <blockquote className="text-slate-700 leading-relaxed italic">
-                &ldquo;{testimonial.quote}&rdquo;
-              </blockquote>
+              <h3 className="text-xl font-semibold text-slate-900">{item.title}</h3>
+              <p className="mt-4 leading-relaxed text-slate-700">{item.description}</p>
             </div>
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+        <div className="mt-16 grid grid-cols-1 gap-8 text-center md:grid-cols-3">
           <div>
-            <div className="text-4xl font-bold text-slate-900 mb-2">4.9/5</div>
-            <div className="text-slate-600">Average Rating</div>
+            <div className="mb-2 text-2xl font-bold text-slate-900">Registration</div>
+            <div className="text-slate-600">
+              Save item details in an organized dashboard.
+            </div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-slate-900 mb-2">50K+</div>
-            <div className="text-slate-600">Active Users</div>
+            <div className="mb-2 text-2xl font-bold text-slate-900">Reporting</div>
+            <div className="text-slate-600">
+              Create stolen reports from real user-owned records.
+            </div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-slate-900 mb-2">98%</div>
-            <div className="text-slate-600">Customer Satisfaction</div>
+            <div className="mb-2 text-2xl font-bold text-slate-900">Verification</div>
+            <div className="text-slate-600">
+              Check public stolen-item records before purchase.
+            </div>
           </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,11 +1,27 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { SUPPORT_EMAIL, buildSupportMailto } from '@/lib/support'
 
 export default function Footer() {
+  const currentYear = new Date().getFullYear()
+  const supportLink = buildSupportMailto({
+    subject: 'Catcher support request',
+    body: [
+      'Hello Catcher team,',
+      '',
+      'I would like help with:',
+      '- Account access',
+      '- Billing',
+      '- Product questions',
+      '',
+      'Thank you.',
+    ].join('\n'),
+  })
+
   return (
-    <footer className="bg-[#0F2651] text-white py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-[#0F2651] py-16 text-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="col-span-1 md:col-span-2">
             <Image
               src="/logo2.svg"
@@ -14,38 +30,83 @@ export default function Footer() {
               height={32}
               className="h-8 w-auto"
             />
-            <p className="mt-4 text-slate-400 max-w-md">
-              Catcher helps you secure your valuables, instantly report them stolen, and help stop thieves from reselling them.
+            <p className="mt-4 max-w-md text-slate-400">
+              Catcher helps you register valuable property, report stolen items, and
+              check suspicious goods before purchase.
+            </p>
+            <p className="mt-4 text-sm text-slate-400">
+              Support:{' '}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-white">
+                {SUPPORT_EMAIL}
+              </a>
             </p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-4">Product</h3>
+            <h3 className="mb-4 text-lg font-semibold">Explore</h3>
             <ul className="space-y-2 text-slate-400">
-              <li><Link href="/" className="hover:text-white transition-colors">Features</Link></li>
-              <li><Link href="/stolen-items" className="hover:text-white transition-colors">Stolen Items</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">API</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
+              <li>
+                <Link href="/#features" className="transition-colors hover:text-white">
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link href="/#how-it-works" className="transition-colors hover:text-white">
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <Link href="/#pricing" className="transition-colors hover:text-white">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link href="/stolen-items" className="transition-colors hover:text-white">
+                  Stolen Items
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
+            <h3 className="mb-4 text-lg font-semibold">Account</h3>
             <ul className="space-y-2 text-slate-400">
-              <li><a href="#" className="hover:text-white transition-colors">About</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+              <li>
+                <Link href="/auth/signin" className="transition-colors hover:text-white">
+                  Sign In
+                </Link>
+              </li>
+              <li>
+                <Link href="/auth/signup" className="transition-colors hover:text-white">
+                  Create Account
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard" className="transition-colors hover:text-white">
+                  Dashboard
+                </Link>
+              </li>
+              <li>
+                <a href={supportLink} className="transition-colors hover:text-white">
+                  Contact Support
+                </a>
+              </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-slate-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-slate-400">© 2024 Catcher. All rights reserved.</p>
-          <div className="flex gap-4 mt-4 md:mt-0">
-            <a href="#" className="text-slate-400 hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="text-slate-400 hover:text-white transition-colors">Terms</a>
-            <a href="#" className="text-slate-400 hover:text-white transition-colors">Support</a>
+        <div className="mt-8 flex flex-col items-center justify-between border-t border-slate-800 pt-8 md:flex-row">
+          <p className="text-slate-400">© {currentYear} Catcher. All rights reserved.</p>
+          <div className="mt-4 flex gap-4 md:mt-0">
+            <Link href="/" className="text-slate-400 transition-colors hover:text-white">
+              Home
+            </Link>
+            <Link href="/features" className="text-slate-400 transition-colors hover:text-white">
+              Feature Overview
+            </Link>
+            <a href={supportLink} className="text-slate-400 transition-colors hover:text-white">
+              Support
+            </a>
           </div>
         </div>
       </div>
     </footer>
-  );
+  )
 }

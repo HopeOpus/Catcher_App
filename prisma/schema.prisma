@@ -26,6 +26,13 @@ enum PropertyStatus {
   @@map("property_status")
 }
 
+enum UserRole {
+  User
+  Admin
+
+  @@map("user_role")
+}
+
 enum SubscriptionPeriod {
   monthly
   yearly
@@ -41,6 +48,104 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
+enum PropertyPlanCode {
+  free
+  monthly
+  yearly
+
+  @@map("property_plan_code")
+}
+
+enum PropertyCoverageStatus {
+  scheduled
+  active
+  grace
+  archived
+  cancelled
+
+  @@map("property_coverage_status")
+}
+
+enum PaymentCurrency {
+  NGN
+
+  @@map("payment_currency")
+}
+
+enum PaymentProvider {
+  Paystack
+
+  @@map("payment_provider")
+}
+
+enum PaymentEventSource {
+  initialize
+  verify
+  webhook
+  callback
+  cancel
+
+  @@map("payment_event_source")
+}
+
+enum PropertyCheckoutSessionStatus {
+  draft
+  pendingPayment      @map("pending_payment")
+  pendingVerification @map("pending_verification")
+  completed
+  expired
+  cancelled
+
+  @@map("property_checkout_session_status")
+}
+
+enum AutomationEmailStatus {
+  processing
+  sent
+  failed
+
+  @@map("automation_email_status")
+}
+
+enum NotificationStatus {
+  unread
+  read
+  archived
+
+  @@map("notification_status")
+}
+
+enum NotificationType {
+  PaymentReceived
+  PaymentFailed
+  CoverageExpiring
+  GraceStarted
+  PropertyArchived
+  PropertyRestored
+  StolenReportUpdated
+
+  @@map("notification_type")
+}
+
+enum AuditLogEntityType {
+  User
+  Property
+  StolenReport
+  CatalogItem
+  PropertyCoverage
+  PaymentEvent
+
+  @@map("audit_log_entity_type")
+}
+
+enum AdminNoteTargetType {
+  User
+  Property
+  StolenReport
+
+  @@map("admin_note_target_type")
+}
+
 enum StolenReportStatus {
   Reported
   UnderInvestigation
@@ -50,40 +155,63 @@ enum StolenReportStatus {
 }
 
 model User {
-  id        String   @id @db.VarChar(255)
-  email     String   @unique @db.VarChar(255)
-  name      String   @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                     String                   @id @db.VarChar(255)
+  email                  String                   @unique @db.VarChar(255)
+  name                   String                   @db.VarChar(255)
+  role                   UserRole                 @default(User)
+  profileImageUrl        String?                  @map("profile_image_url") @db.VarChar(500)
+  phoneNumber            String?                  @map("phone_number") @db.VarChar(50)
+  nextOfKinEmail         String?                  @map("next_of_kin_email") @db.VarChar(255)
+  nextOfKinPhone         String?                  @map("next_of_kin_phone") @db.VarChar(50)
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  properties    Property[]
-  subscriptions Subscription[]
-  stolenReports StolenReport[]
+  properties             Property[]
+  propertyCoverages      PropertyCoverage[]
+  propertyCheckoutSessions PropertyCheckoutSession[]
+  subscriptions          Subscription[]
+  stolenReports          StolenReport[]
+  notifications          Notification[]
+  billingReceipts        BillingReceipt[]
+  auditLogs              AuditLog[]                @relation("AuditLogActor")
+  authoredAdminNotes     AdminNote[]               @relation("AdminNoteAuthor")
+  receivedAdminNotes     AdminNote[]               @relation("AdminNoteTargetUser")
 
   @@map("users")
 }
 
 model Property {
-  id             String         @id @db.VarChar(255)
-  userId         String         @map("user_id") @db.VarChar(255)
-  name           String         @db.VarChar(255)
-  type           PropertyType
-  serialNumber   String         @map("serial_number") @db.VarChar(255)
-  description    String?        @db.Text
-  dateRegistered DateTime       @default(now()) @map("date_registered") @db.Date
-  status         PropertyStatus @default(Active)
-  photoUrl       String?        @map("photo_url") @db.VarChar(500)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                String                   @id @db.VarChar(255)
+  userId            String                   @map("user_id") @db.VarChar(255)
+  name              String                   @db.VarChar(255)
+  type              PropertyType
+  serialNumber      String                   @map("serial_number") @db.VarChar(255)
+  description       String?                  @db.Text
+  dateRegistered    DateTime                 @default(now()) @map("date_registered") @db.Date
+  status            PropertyStatus           @default(Active)
+  photoUrl          String?                  @map("photo_url") @db.VarChar(500)
+  archivedAt        DateTime?                @map("archived_at") @db.Timestamptz
+  archiveReason     String?                  @map("archive_reason") @db.VarChar(100)
+  restorable        Boolean                  @default(false)
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  photos        PropertyPhoto[]
-  stolenReports StolenReport[]
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkoutSessions  PropertyCheckoutSession[]
+  coverages         PropertyCoverage[]
+  photos            PropertyPhoto[]
+  stolenReports     StolenReport[]
+  notifications     Notification[]
+  billingReceipts   BillingReceipt[]
+  publicVerification PropertyPublicVerification?
+  auditLogs         AuditLog[]
+  adminNotes        AdminNote[]
 
   @@index([userId])
   @@index([serialNumber])
   @@index([type])
   @@index([status])
+  @@index([archivedAt])
   @@map("properties")
 }
 
@@ -134,6 +262,87 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model PropertyCoverage {
+  id                       String                 @id @db.VarChar(255)
+  propertyId               String                 @map("property_id") @db.VarChar(255)
+  userId                   String                 @map("user_id") @db.VarChar(255)
+  planCode                 PropertyPlanCode       @map("plan_code")
+  planName                 String                 @map("plan_name") @db.VarChar(100)
+  priceNgnKobo             Int                    @map("price_ngn_kobo")
+  currency                 PaymentCurrency        @default(NGN)
+  status                   PropertyCoverageStatus @default(active)
+  startsAt                 DateTime               @map("starts_at") @db.Timestamptz
+  expiresAt                DateTime?              @map("expires_at") @db.Timestamptz
+  graceEndsAt              DateTime?              @map("grace_ends_at") @db.Timestamptz
+  archivedAt               DateTime?              @map("archived_at") @db.Timestamptz
+  renewedFromId            String?                @map("renewed_from_id") @db.VarChar(255)
+  paystackReference        String?                @unique @map("paystack_reference") @db.VarChar(255)
+  paystackCustomerCode     String?                @map("paystack_customer_code") @db.VarChar(255)
+  paystackSubscriptionCode String?                @map("paystack_subscription_code") @db.VarChar(255)
+  paystackAuthorizationCode String?               @map("paystack_authorization_code") @db.VarChar(255)
+  createdAt                DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  property       Property                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  renewedFrom    PropertyCoverage?       @relation("PropertyCoverageRenewals", fields: [renewedFromId], references: [id], onDelete: SetNull)
+  renewals       PropertyCoverage[]      @relation("PropertyCoverageRenewals")
+  checkoutSession PropertyCheckoutSession?
+  notifications  Notification[]
+  billingReceipt BillingReceipt?
+  auditLogs      AuditLog[]
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([graceEndsAt])
+  @@index([userId, status])
+  @@index([propertyId, status])
+  @@map("property_coverages")
+}
+
+model PropertyCheckoutSession {
+  id                       String                        @id @db.VarChar(255)
+  userId                   String                        @map("user_id") @db.VarChar(255)
+  propertyId               String?                       @map("property_id") @db.VarChar(255)
+  coverageId               String?                       @unique @map("coverage_id") @db.VarChar(255)
+  returnPath               String?                       @map("return_path") @db.VarChar(255)
+  name                     String                        @db.VarChar(255)
+  type                     PropertyType
+  serialNumber             String                        @map("serial_number") @db.VarChar(255)
+  description              String?                       @db.Text
+  propertyStatus           PropertyStatus                @default(Active) @map("property_status")
+  dateRegistered           DateTime                      @map("date_registered") @db.Date
+  coverPhotoUrl            String?                       @map("cover_photo_url") @db.VarChar(500)
+  photoUrls                String[]                      @default([]) @map("photo_urls") @db.Text
+  planCode                 PropertyPlanCode              @map("plan_code")
+  planName                 String                        @map("plan_name") @db.VarChar(100)
+  priceNgnKobo             Int                           @map("price_ngn_kobo")
+  currency                 PaymentCurrency               @default(NGN)
+  status                   PropertyCheckoutSessionStatus @default(draft)
+  paystackReference        String?                       @unique @map("paystack_reference") @db.VarChar(255)
+  paystackCustomerCode     String?                       @map("paystack_customer_code") @db.VarChar(255)
+  paystackAccessCode       String?                       @map("paystack_access_code") @db.VarChar(255)
+  paystackAuthorizationUrl String?                       @map("paystack_authorization_url") @db.VarChar(500)
+  checkoutExpiresAt        DateTime?                     @map("checkout_expires_at") @db.Timestamptz
+  completedAt              DateTime?                     @map("completed_at") @db.Timestamptz
+  createdAt                DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  coverage PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
+  property Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billingReceipt BillingReceipt?
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([checkoutExpiresAt])
+  @@index([userId, status])
+  @@map("property_checkout_sessions")
+}
+
 model StolenReport {
   id           String             @id @db.VarChar(255)
   userId       String             @map("user_id") @db.VarChar(255)
@@ -150,10 +359,234 @@ model StolenReport {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  adminNotes    AdminNote[]
 
   @@index([userId])
   @@index([propertyId])
   @@index([serialNumber])
   @@index([status])
   @@map("stolen_reports")
+}
+
+model AutomationEmailLog {
+  id                String                @id @db.VarChar(255)
+  dedupeKey         String                @unique @map("dedupe_key") @db.VarChar(255)
+  eventType         String                @map("event_type") @db.VarChar(100)
+  status            AutomationEmailStatus @default(processing)
+  userId            String?               @map("user_id") @db.VarChar(255)
+  propertyId        String?               @map("property_id") @db.VarChar(255)
+  coverageId        String?               @map("coverage_id") @db.VarChar(255)
+  checkoutSessionId String?               @map("checkout_session_id") @db.VarChar(255)
+  recipientEmail    String                @map("recipient_email") @db.VarChar(255)
+  subject           String                @db.VarChar(255)
+  resendEmailId     String?               @map("resend_email_id") @db.VarChar(255)
+  errorMessage      String?               @map("error_message") @db.Text
+  processingStartedAt DateTime            @default(now()) @map("processing_started_at") @db.Timestamptz
+  sentAt            DateTime?             @map("sent_at") @db.Timestamptz
+  failedAt          DateTime?             @map("failed_at") @db.Timestamptz
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([eventType])
+  @@index([status])
+  @@index([userId])
+  @@index([propertyId])
+  @@index([coverageId])
+  @@map("automation_email_logs")
+}
+
+model PaymentEventLog {
+  id                    String             @id @db.VarChar(255)
+  provider              PaymentProvider    @default(Paystack)
+  source                PaymentEventSource
+  reference             String?            @db.VarChar(255)
+  providerEventType     String?            @map("provider_event_type") @db.VarChar(100)
+  providerTransactionId String?            @map("provider_transaction_id") @db.VarChar(100)
+  providerEnvironment   String?            @map("provider_environment") @db.VarChar(50)
+  checkoutSessionId     String?            @map("checkout_session_id") @db.VarChar(255)
+  userId                String?            @map("user_id") @db.VarChar(255)
+  propertyId            String?            @map("property_id") @db.VarChar(255)
+  coverageId            String?            @map("coverage_id") @db.VarChar(255)
+  amountKobo            Int?               @map("amount_kobo")
+  currency              PaymentCurrency?
+  transactionStatus     String?            @map("transaction_status") @db.VarChar(100)
+  signatureValid        Boolean?           @map("signature_valid")
+  processingOutcome     String?            @map("processing_outcome") @db.VarChar(100)
+  errorMessage          String?            @map("error_message") @db.Text
+  payload               Json?
+  processedAt           DateTime?          @map("processed_at") @db.Timestamptz
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  notifications         Notification[]
+  billingReceipt        BillingReceipt?
+
+  @@index([provider])
+  @@index([source])
+  @@index([reference])
+  @@index([checkoutSessionId])
+  @@index([userId])
+  @@index([propertyId])
+  @@index([coverageId])
+  @@index([processingOutcome])
+  @@map("payment_event_logs")
+}
+
+model Notification {
+  id                String             @id @db.VarChar(255)
+  userId            String             @map("user_id") @db.VarChar(255)
+  type              NotificationType
+  title             String             @db.VarChar(255)
+  message           String             @db.Text
+  linkPath          String?            @map("link_path") @db.VarChar(255)
+  status            NotificationStatus @default(unread)
+  readAt            DateTime?          @map("read_at") @db.Timestamptz
+  archivedAt        DateTime?          @map("archived_at") @db.Timestamptz
+  propertyId        String?            @map("property_id") @db.VarChar(255)
+  coverageId        String?            @map("coverage_id") @db.VarChar(255)
+  stolenReportId    String?            @map("stolen_report_id") @db.VarChar(255)
+  paymentEventLogId String?            @map("payment_event_log_id") @db.VarChar(255)
+  payload           Json?
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property        Property?        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  coverage        PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
+  stolenReport    StolenReport?    @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
+  paymentEventLog PaymentEventLog? @relation(fields: [paymentEventLogId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([propertyId])
+  @@index([coverageId])
+  @@index([stolenReportId])
+  @@index([paymentEventLogId])
+  @@index([userId, status, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id            String             @id @db.VarChar(255)
+  actorUserId   String?            @map("actor_user_id") @db.VarChar(255)
+  action        String             @db.VarChar(100)
+  entityType    AuditLogEntityType @map("entity_type")
+  entityId      String             @map("entity_id") @db.VarChar(255)
+  entityLabel   String?            @map("entity_label") @db.VarChar(255)
+  summary       String             @db.VarChar(255)
+  targetUserId  String?            @map("target_user_id") @db.VarChar(255)
+  propertyId    String?            @map("property_id") @db.VarChar(255)
+  stolenReportId String?           @map("stolen_report_id") @db.VarChar(255)
+  coverageId    String?            @map("coverage_id") @db.VarChar(255)
+  catalogItemId String?            @map("catalog_item_id") @db.VarChar(255)
+  details       Json?
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  actor        User?            @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  property     Property?        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  stolenReport StolenReport?    @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
+  coverage     PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([targetUserId])
+  @@index([propertyId])
+  @@index([stolenReportId])
+  @@index([coverageId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AdminNote {
+  id            String              @id @db.VarChar(255)
+  authorUserId  String              @map("author_user_id") @db.VarChar(255)
+  targetType    AdminNoteTargetType @map("target_type")
+  targetId      String              @map("target_id") @db.VarChar(255)
+  targetUserId  String?             @map("target_user_id") @db.VarChar(255)
+  propertyId    String?             @map("property_id") @db.VarChar(255)
+  stolenReportId String?            @map("stolen_report_id") @db.VarChar(255)
+  body          String              @db.Text
+  isPinned      Boolean             @default(false) @map("is_pinned")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  author       User         @relation("AdminNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  targetUser   User?        @relation("AdminNoteTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  stolenReport StolenReport? @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
+
+  @@index([authorUserId])
+  @@index([targetType])
+  @@index([targetId])
+  @@index([targetUserId])
+  @@index([propertyId])
+  @@index([stolenReportId])
+  @@map("admin_notes")
+}
+
+model BillingReceipt {
+  id               String          @id @db.VarChar(255)
+  receiptNumber    String          @unique @map("receipt_number") @db.VarChar(100)
+  coverageId       String          @unique @map("coverage_id") @db.VarChar(255)
+  checkoutSessionId String?        @unique @map("checkout_session_id") @db.VarChar(255)
+  paymentEventLogId String?        @unique @map("payment_event_log_id") @db.VarChar(255)
+  userId           String          @map("user_id") @db.VarChar(255)
+  propertyId       String          @map("property_id") @db.VarChar(255)
+  provider         PaymentProvider @default(Paystack)
+  reference        String?         @db.VarChar(255)
+  planCode         PropertyPlanCode @map("plan_code")
+  planName         String          @map("plan_name") @db.VarChar(100)
+  amountKobo       Int             @map("amount_kobo")
+  currency         PaymentCurrency @default(NGN)
+  startsAt         DateTime        @map("starts_at") @db.Timestamptz
+  expiresAt        DateTime?       @map("expires_at") @db.Timestamptz
+  issuedAt         DateTime        @default(now()) @map("issued_at") @db.Timestamptz
+  snapshot         Json?
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  coverage        PropertyCoverage     @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  checkoutSession PropertyCheckoutSession? @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  paymentEventLog PaymentEventLog?     @relation(fields: [paymentEventLogId], references: [id], onDelete: SetNull)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([reference])
+  @@map("billing_receipts")
+}
+
+model PropertyPublicVerification {
+  id          String   @id @db.VarChar(255)
+  propertyId  String   @unique @map("property_id") @db.VarChar(255)
+  slug        String   @unique @db.VarChar(100)
+  token       String   @unique @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_public_verifications")
+}
+
+model RateLimitBucket {
+  id              String   @id @db.VarChar(255)
+  scope           String   @db.VarChar(100)
+  identifier      String   @db.VarChar(255)
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz
+  windowEndsAt    DateTime @map("window_ends_at") @db.Timestamptz
+  hitCount        Int      @default(1) @map("hit_count")
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scope, identifier, windowStartedAt])
+  @@index([scope, identifier])
+  @@index([blockedUntil])
+  @@map("rate_limit_buckets")
 }

@@ -24,6 +24,43 @@ export const SUBSCRIPTION_STATUSES = [
 export type SubscriptionStatusValue =
   (typeof SUBSCRIPTION_STATUSES)[number];
 
+export const PROPERTY_PLAN_CODES = ["free", "monthly", "yearly"] as const;
+
+export type PropertyPlanCodeValue = (typeof PROPERTY_PLAN_CODES)[number];
+
+export const PROPERTY_PLAN_LABELS: Record<PropertyPlanCodeValue, string> = {
+  free: "Free",
+  monthly: "Monthly",
+  yearly: "Yearly",
+};
+
+export const PROPERTY_COVERAGE_STATUSES = [
+  "scheduled",
+  "active",
+  "grace",
+  "archived",
+  "cancelled",
+] as const;
+
+export type PropertyCoverageStatusValue =
+  (typeof PROPERTY_COVERAGE_STATUSES)[number];
+
+export const PROPERTY_CHECKOUT_SESSION_STATUSES = [
+  "draft",
+  "pendingPayment",
+  "pendingVerification",
+  "completed",
+  "expired",
+  "cancelled",
+] as const;
+
+export type PropertyCheckoutSessionStatusValue =
+  (typeof PROPERTY_CHECKOUT_SESSION_STATUSES)[number];
+
+export const PAYMENT_CURRENCIES = ["NGN"] as const;
+
+export type PaymentCurrencyValue = (typeof PAYMENT_CURRENCIES)[number];
+
 export const STOLEN_REPORT_STATUSES = [
   "Reported",
   "UnderInvestigation",
@@ -77,6 +114,44 @@ export function getStolenReportStatusLabel(value: string): string {
   }
 
   return value;
+}
+
+export function isPropertyPlanCode(
+  value: unknown,
+): value is PropertyPlanCodeValue {
+  return (
+    typeof value === "string" &&
+    PROPERTY_PLAN_CODES.includes(value as PropertyPlanCodeValue)
+  );
+}
+
+export function isPropertyCoverageStatus(
+  value: unknown,
+): value is PropertyCoverageStatusValue {
+  return (
+    typeof value === "string" &&
+    PROPERTY_COVERAGE_STATUSES.includes(value as PropertyCoverageStatusValue)
+  );
+}
+
+export function isPropertyCheckoutSessionStatus(
+  value: unknown,
+): value is PropertyCheckoutSessionStatusValue {
+  return (
+    typeof value === "string" &&
+    PROPERTY_CHECKOUT_SESSION_STATUSES.includes(
+      value as PropertyCheckoutSessionStatusValue,
+    )
+  );
+}
+
+export function isPaymentCurrency(
+  value: unknown,
+): value is PaymentCurrencyValue {
+  return (
+    typeof value === "string" &&
+    PAYMENT_CURRENCIES.includes(value as PaymentCurrencyValue)
+  );
 }
 
 export function normalizeStoredPhotoUrl(url: string): string {

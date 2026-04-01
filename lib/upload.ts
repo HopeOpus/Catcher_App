@@ -12,50 +12,69 @@ export interface UploadProgress {
   percentage: number;
 }
 
-/**
- * Upload a file to a mock storage service
- * In a real application, this would upload to cloud storage like AWS S3, Cloudinary, etc.
- */
+type UploadFileOptions = {
+  propertyId?: string;
+  onProgress?: (progress: UploadProgress) => void;
+};
+
 export async function uploadFile(
-  file: File, 
-  onProgress?: (progress: UploadProgress) => void
+  file: File,
+  options: UploadFileOptions = {},
 ): Promise<UploadResult> {
   return new Promise((resolve) => {
-    const fileSize = file.size;
-    let uploaded = 0;
-    
-    const interval = setInterval(() => {
-      uploaded += Math.random() * (fileSize / 10);
-      
-      if (onProgress) {
-        const progress: UploadProgress = {
-          loaded: Math.min(uploaded, fileSize),
-          total: fileSize,
-          percentage: Math.round((uploaded / fileSize) * 100)
-        };
-        onProgress(progress);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('propertyId', options.propertyId ?? 'general');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload');
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (!event.lengthComputable || !options.onProgress) {
+        return;
       }
-      
-      if (uploaded >= fileSize) {
-        clearInterval(interval);
-        
-        // Simulate 90% success rate
-        if (Math.random() > 0.1) {
-          // Success - return mock URL
-          const mockUrl = `https://mock-storage.com/${Date.now()}_${file.name}`;
+
+      options.onProgress({
+        loaded: event.loaded,
+        total: event.total,
+        percentage: Math.round((event.loaded / event.total) * 100),
+      });
+    });
+
+    xhr.addEventListener('load', () => {
+      try {
+        const payload = JSON.parse(xhr.responseText) as UploadResult & {
+          filename?: string;
+        };
+
+        if (xhr.status >= 200 && xhr.status < 300 && payload?.url) {
           resolve({
             success: true,
-            url: mockUrl
+            url: payload.url,
           });
-        } else {
-          // Failure
-          resolve({
-            success: false,
-            error: 'Upload failed. Please try again.'
-          });
+          return;
         }
+
+        resolve({
+          success: false,
+          error: payload?.error || 'Upload failed. Please try again.',
+        });
+      } catch {
+        resolve({
+          success: false,
+          error: 'Upload failed. Please try again.',
+        });
       }
-    }, 100);
+    });
+
+    xhr.addEventListener('error', () => {
+      resolve({
+        success: false,
+        error: 'Upload failed. Please check your connection and try again.',
+      });
+    });
+
+    xhr.send(formData);
   });
 }
 

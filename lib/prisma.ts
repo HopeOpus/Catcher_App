@@ -27,15 +27,43 @@ const adapter =
     connectionString,
   });
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient() {
+  return new PrismaClient({
     adapter,
     log:
       process.env.NODE_ENV === 'development'
         ? ['query', 'error', 'warn']
         : ['error'],
   });
+}
+
+function canReusePrismaClient(client: PrismaClient | undefined) {
+  if (!client) {
+    return false;
+  }
+
+  if (!(client instanceof PrismaClient)) {
+    return false;
+  }
+
+  const candidate = client as PrismaClient & {
+    billingReceipt?: unknown;
+    notification?: unknown;
+    propertyCheckoutSession?: unknown;
+  };
+
+  return Boolean(
+    candidate.billingReceipt &&
+      candidate.notification &&
+      candidate.propertyCheckoutSession,
+  );
+}
+
+const reusablePrisma = canReusePrismaClient(globalForPrisma.prisma)
+  ? globalForPrisma.prisma
+  : undefined;
+
+export const prisma: PrismaClient = reusablePrisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;

@@ -1,62 +1,53 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { auth } from '@clerk/nextjs/server';
+import {
+  isCloudinaryConfigured,
+  validateImageUploadFile,
+  uploadImageToCloudinary,
+} from '@/lib/cloudinary';
+import { consumeRateLimit, resolveRateLimitIdentifier } from '@/lib/rate-limit';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-
-interface CloudinaryUploadResponse {
-  secure_url?: string;
-  public_id?: string;
-  error?: {
-    message?: string;
-  };
+function sanitizeStorageSegment(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48);
+  return sanitized || 'file';
 }
 
-function isCloudinaryConfigured() {
-  return Boolean(process.env.CLOUDINARY_CLOUD_NAME) &&
-    Boolean(process.env.CLOUDINARY_API_KEY) &&
-    Boolean(process.env.CLOUDINARY_API_SECRET);
-}
-
-async function uploadToCloudinary(file: File, propertyId: string) {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error('Cloudinary is not configured.');
-  }
-
-  const uniqueId = Math.random().toString(36).substring(2, 11);
-  const publicId = `${propertyId}_${uniqueId}`;
-  const formData = new FormData();
-
-  formData.append('file', file);
-  formData.append('folder', process.env.CLOUDINARY_UPLOAD_FOLDER || 'catcher');
-  formData.append('public_id', publicId);
-
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`,
-    },
-    body: formData,
-  });
-
-  const result = await response.json() as CloudinaryUploadResponse;
-
-  if (!response.ok || !result.secure_url) {
-    throw new Error(result.error?.message || 'Cloudinary upload failed');
-  }
-
-  return {
-    url: result.secure_url,
-    filename: result.public_id || publicId,
-  };
-}
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = await consumeRateLimit({
+      scope: 'api:upload',
+      identifier: resolveRateLimitIdentifier({
+        request,
+        userId,
+      }),
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+      blockDurationMs: 10 * 60 * 1000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Too many uploads. Please wait a bit before trying again.',
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const propertyId = (formData.get('propertyId') as string) || 'general';
@@ -65,47 +56,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (isCloudinaryConfigured()) {
-      const result = await uploadToCloudinary(file, propertyId);
+    const validationError = validateImageUploadFile(file);
 
-      return NextResponse.json({
-        success: true,
-        url: result.url,
-        filename: result.filename,
-        size: file.size,
-        type: file.type
-      });
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    if (process.env.VERCEL) {
+    const uploadKey = `${sanitizeStorageSegment(userId)}_${sanitizeStorageSegment(propertyId)}`;
+
+    if (!isCloudinaryConfigured()) {
       return NextResponse.json(
-        { error: 'Cloudinary must be configured for file uploads on Vercel.' },
-        { status: 500 }
+        {
+          error:
+            'Cloudinary upload storage is required. Configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+        },
+        { status: 500 },
       );
     }
 
-    try {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    } catch {
-      // Directory already exists.
-    }
+    const result = await uploadImageToCloudinary(file, uploadKey);
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    
-    const uniqueId = Math.random().toString(36).substring(2, 11);
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${propertyId}_${uniqueId}.${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-
-    await writeFile(filepath, buffer);
-
-    const url = `/uploads/${filename}`;
-    
     return NextResponse.json({ 
       success: true, 
-      url,
-      filename,
+      url: result.url,
+      filename: result.publicId,
       size: file.size,
       type: file.type
     });

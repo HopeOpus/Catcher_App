@@ -1,4 +1,8 @@
-import { Button } from "@/components/ui/button";
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import Link from 'next/link'
+import Image from 'next/image'
+import { Menu } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,74 +10,77 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Menu } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+} from '@/components/ui/dropdown-menu'
 
 export function Navigation() {
   return (
-    <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex gap-1">
+    <nav className="fixed top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-4">
+          <Link href="/" className="flex items-center gap-1">
             <Image
               src="/logo2.svg"
               alt="Catcher Logo"
               width={160}
               height={32}
-              className="h-8 w-auto mr-0"
+              className="mr-0 h-8 w-auto"
             />
-            <span className="text-3xl font-semibold text-[#1c1c1c] tracking-tighter ml-0">Catcher</span>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
-<Link href="/features">
-  <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
-    Features
-  </Button>
-</Link>
-            <Link href="/stolen-items">
-              <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                Stolen Items
-              </Button>
-            </Link>
-            <Link href="/">
-              <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
-                About
-              </Button>
-            </Link>
-            
+            <span className="ml-0 text-3xl font-semibold tracking-tighter text-[#1c1c1c]">
+              Catcher
+            </span>
+          </Link>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <Button asChild variant="ghost" className="text-slate-700 hover:text-slate-900">
+              <Link href="/#features">Features</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-slate-700 hover:text-slate-900">
+              <Link href="/#how-it-works">How It Works</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-slate-700 hover:text-slate-900">
+              <Link href="/#pricing">Pricing</Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700">
+              <Link href="/stolen-items">Stolen Items</Link>
+            </Button>
+
             <SignedOut>
-              <Link href="/auth/signin">
-                <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button className="bg-gradient-to-r from-[#336699] to-[#0F2651] hover:from-[#0F2651] hover:to-[#0F2651] text-white shadow-lg hover:shadow-xl transition-all duration-200">
-                  Sign Up
-                </Button>
-              </Link>
+              <Button
+                asChild
+                variant="outline"
+                className="border-slate-300 text-slate-700 hover:bg-slate-50">
+                <Link href="/auth/signin">Sign In</Link>
+              </Button>
+              <Button
+                asChild
+                className="bg-gradient-to-r from-[#336699] to-[#0F2651] text-white shadow-lg transition-all duration-200 hover:from-[#0F2651] hover:to-[#0F2651] hover:shadow-xl">
+                <Link href="/auth/signup">Create Account</Link>
+              </Button>
             </SignedOut>
-            
+
             <SignedIn>
-              <UserButton 
+              <Button
+                asChild
+                variant="outline"
+                className="border-[#36689e] text-[#0F2651] hover:bg-[#36689e]/10">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <UserButton
                 appearance={{
                   elements: {
                     userButtonAvatarBox: 'w-10 h-10',
                     userButtonPopoverCard: 'bg-white border border-slate-200 shadow-lg',
                     userButtonPopoverActionButton: 'hover:bg-slate-50',
-                    userButtonPopoverFooter: 'border-t border-slate-200'
-                  }
+                    userButtonPopoverFooter: 'border-t border-slate-200',
+                  },
                 }}
               />
             </SignedIn>
           </div>
 
-          {/* Mobile Navigation */}
           <div className="md:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -85,43 +92,47 @@ export function Navigation() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Navigation</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-<DropdownMenuItem asChild>
-  <Link href="/features">Features</Link>
-</DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/stolen-items" className="text-red-600 font-medium">Stolen Items</Link>
+                  <Link href="/#features">Features</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/">About</Link>
+                  <Link href="/#how-it-works">How It Works</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/#pricing">Pricing</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/stolen-items" className="font-medium text-red-600">
+                    Stolen Items
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                
+
                 <SignedOut>
-                  <Link href="/auth/signin">
-                    <DropdownMenuItem>
-                      <span>Sign In</span>
-                    </DropdownMenuItem>
-                  </Link>
-                  <Link href="/auth/signup">
-                    <DropdownMenuItem>
-                      <span className="bg-gradient-to-r from-[#336699] to-[#0F2651] text-white px-3 py-1 rounded-md">Sign Up</span>
-                    </DropdownMenuItem>
-                  </Link>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/signin">Sign In</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/signup">Create Account</Link>
+                  </DropdownMenuItem>
                 </SignedOut>
-                
+
                 <SignedIn>
-                  <DropdownMenuItem>
-                    <UserButton 
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <div className="px-2 py-2">
+                    <UserButton
                       appearance={{
                         elements: {
-                          userButtonAvatarBox: 'w-8 h-8 mr-2',
+                          userButtonAvatarBox: 'w-8 h-8',
                           userButtonPopoverCard: 'bg-white border border-slate-200 shadow-lg',
                           userButtonPopoverActionButton: 'hover:bg-slate-50',
-                          userButtonPopoverFooter: 'border-t border-slate-200'
-                        }
+                          userButtonPopoverFooter: 'border-t border-slate-200',
+                        },
                       }}
                     />
-                  </DropdownMenuItem>
+                  </div>
                 </SignedIn>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -129,5 +140,5 @@ export function Navigation() {
         </div>
       </div>
     </nav>
-  );
+  )
 }

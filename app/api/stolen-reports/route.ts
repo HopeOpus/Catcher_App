@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   DEFAULT_STOLEN_REPORT_STATUS,
   getStolenReportStatusLabel,
   isStolenReportStatus,
 } from "@/lib/catcher-domain";
+import {
+  getAuthenticatedAppUser,
+  syncAuthenticatedAppUserRecord,
+} from "@/lib/authenticated-user";
+import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 type StolenReportRecord = {
@@ -43,13 +47,27 @@ function serializeStolenReport(report: StolenReportRecord) {
 
 export async function GET(request: Request) {
   try {
+    const authenticatedUser = await getAuthenticatedAppUser();
+
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
     const propertyId = searchParams.get("propertyId");
+
+    await syncPropertyLifecycle(prisma, {
+      userId: authenticatedUser.userId,
+      propertyId: propertyId ?? undefined,
+    });
 
     const reports = await prisma.stolenReport.findMany({
       where: {
-        ...(userId ? { userId } : {}),
+        userId: authenticatedUser.userId,
+        property: {
+          archivedAt: null,
+        },
         ...(propertyId ? { propertyId } : {}),
       },
       orderBy: { createdAt: "desc" },
@@ -67,6 +85,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authenticatedUser = await getAuthenticatedAppUser();
+
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const propertyId = body.property_id;
     const location =
@@ -96,13 +120,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
+    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+    await syncPropertyLifecycle(prisma, {
+      userId: authenticatedUser.userId,
+      propertyId,
+    });
+
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        userId: authenticatedUser.userId,
+        archivedAt: null,
+      },
     });
 
     if (!property) {
       return NextResponse.json(
-        { error: "Property not found" },
+        { error: "Property not found or is no longer active for the current user" },
         { status: 404 },
       );
     }
@@ -111,39 +145,43 @@ export async function POST(request: Request) {
       ? body.status
       : DEFAULT_STOLEN_REPORT_STATUS;
 
-    const report = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        const createdReport = await tx.stolenReport.create({
-          data: {
-            id: randomUUID(),
-            userId: property.userId,
-            propertyId: property.id,
-            propertyName: property.name,
-            serialNumber: property.serialNumber,
-            dateReported: body.date_reported
-              ? new Date(body.date_reported)
-              : new Date(),
-            location,
-            description,
-            status: finalStatus,
-            evidenceUrls,
-          },
-        });
-
-        await tx.property.update({
-          where: { id: property.id },
-          data: { status: "Stolen" },
-        });
-
-        return createdReport;
+    const createReport = prisma.stolenReport.create({
+      data: {
+        id: randomUUID(),
+        userId: authenticatedUser.userId,
+        propertyId: property.id,
+        propertyName: property.name,
+        serialNumber: property.serialNumber,
+        dateReported: body.date_reported
+          ? new Date(body.date_reported)
+          : new Date(),
+        location,
+        description,
+        status: finalStatus,
+        evidenceUrls,
       },
-    );
+    });
+
+    const updateProperty = prisma.property.update({
+      where: { id: property.id },
+      data: { status: "Stolen" },
+    });
+
+    const [report] = await prisma.$transaction([createReport, updateProperty]);
 
     return NextResponse.json(serializeStolenReport(report), { status: 201 });
   } catch (error) {
     console.error("Error creating stolen report:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to create stolen report";
+
     return NextResponse.json(
-      { error: "Failed to create stolen report" },
+      {
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Failed to create stolen report"
+            : errorMessage,
+      },
       { status: 500 },
     );
   }

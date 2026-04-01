@@ -13,11 +13,34 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
+function parseAdminEmails(value) {
+  return (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function buildSeedAdminId(email) {
+  return `seed-admin-${email.replace(/[^a-z0-9]+/gi, "-")}`.slice(0, 255);
+}
+
+function buildSeedAdminName(email) {
+  const localPart = email.split("@")[0] ?? "admin";
+
+  return localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ") || "Admin User";
+}
+
 const user = {
   id: "default-user",
   email: "default@catcher.com",
   name: "Default User",
 };
+
+const adminEmails = parseAdminEmails(process.env.ADMIN_EMAILS);
 
 const preRegisteredProperties = [
   {
@@ -117,6 +140,51 @@ const subscriptions = [
   },
 ];
 
+const propertyCoverages = [
+  {
+    id: "seed-coverage-vehicle-1",
+    propertyId: "seed-property-vehicle-1",
+    userId: user.id,
+    planCode: "yearly",
+    planName: "Yearly Property Coverage",
+    priceNgnKobo: 500000,
+    currency: "NGN",
+    status: "active",
+    startsAt: new Date("2026-01-15T00:00:00.000Z"),
+    expiresAt: new Date("2027-01-15T00:00:00.000Z"),
+    graceEndsAt: new Date("2027-01-22T00:00:00.000Z"),
+    paystackReference: "seed-paystack-reference-vehicle-1",
+  },
+  {
+    id: "seed-coverage-electronics-1",
+    propertyId: "seed-property-electronics-1",
+    userId: user.id,
+    planCode: "monthly",
+    planName: "Monthly Property Coverage",
+    priceNgnKobo: 80000,
+    currency: "NGN",
+    status: "active",
+    startsAt: new Date("2026-03-10T00:00:00.000Z"),
+    expiresAt: new Date("2026-04-09T00:00:00.000Z"),
+    graceEndsAt: new Date("2026-04-16T00:00:00.000Z"),
+    paystackReference: "seed-paystack-reference-electronics-1",
+  },
+  {
+    id: "seed-coverage-jewelry-1",
+    propertyId: "seed-property-jewelry-1",
+    userId: user.id,
+    planCode: "free",
+    planName: "Free Property Coverage",
+    priceNgnKobo: 0,
+    currency: "NGN",
+    status: "active",
+    startsAt: new Date("2026-01-05T00:00:00.000Z"),
+    expiresAt: null,
+    graceEndsAt: null,
+    paystackReference: null,
+  },
+];
+
 const stolenReports = [
   {
     id: "seed-stolen-report-vehicle-1",
@@ -153,6 +221,21 @@ async function main() {
     create: user,
   });
 
+  for (const adminEmail of adminEmails) {
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        role: "Admin",
+      },
+      create: {
+        id: buildSeedAdminId(adminEmail),
+        email: adminEmail,
+        name: buildSeedAdminName(adminEmail),
+        role: "Admin",
+      },
+    });
+  }
+
   for (const property of preRegisteredProperties) {
     await prisma.preRegisteredProperty.upsert({
       where: { id: property.id },
@@ -185,6 +268,14 @@ async function main() {
     });
   }
 
+  for (const coverage of propertyCoverages) {
+    await prisma.propertyCoverage.upsert({
+      where: { id: coverage.id },
+      update: coverage,
+      create: coverage,
+    });
+  }
+
   for (const report of stolenReports) {
     await prisma.stolenReport.upsert({
       where: { id: report.id },
@@ -193,7 +284,9 @@ async function main() {
     });
   }
 
-  console.log("Remote database seeded successfully.");
+  console.log(
+    `Remote database seeded successfully. Admin users ensured: ${adminEmails.length}.`,
+  );
 }
 
 main()

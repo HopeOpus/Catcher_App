@@ -1,309 +1,395 @@
 'use client';
 
-import { DashboardLayout } from '@/components/dashboard-layout';
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { 
-  AlertTriangle, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  MapPin,
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
   Calendar,
   FileText,
-  Upload
+  MapPin,
+  RefreshCcw,
+  Search,
+  ShieldAlert,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { normalizeStoredPhotoUrl } from '@/lib/catcher-domain';
 
-interface StolenReport {
-  id: number;
-  propertyName: string;
-  serialNumber: string;
-  dateReported: string;
+type StolenReport = {
+  id: string;
+  property_id: string;
+  property_name: string;
+  serial_number: string;
+  date_reported: string;
   location: string;
-  description: string;
-  status: 'Reported' | 'Under Investigation' | 'Resolved';
-  evidence: string[];
+  description: string | null;
+  status: string;
+  status_label: string;
+  evidence_urls: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'Reported':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'UnderInvestigation':
+      return 'bg-blue-100 text-blue-800';
+    case 'Resolved':
+      return 'bg-green-100 text-green-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function getEvidenceUrl(url: string) {
+  return normalizeStoredPhotoUrl(url);
+}
+
+function getEvidenceLabel(url: string, index: number) {
+  const normalizedUrl = getEvidenceUrl(url);
+  const fileName = normalizedUrl.split('/').pop();
+  return fileName || `Evidence ${index + 1}`;
+}
+
+function LoadingCard() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader>
+        <div className="h-6 w-40 rounded bg-slate-200" />
+        <div className="h-4 w-64 rounded bg-slate-100" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="h-4 w-full rounded bg-slate-100" />
+          <div className="h-4 w-5/6 rounded bg-slate-100" />
+          <div className="h-4 w-2/3 rounded bg-slate-100" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function StolenReportsPage() {
-  const [reports, setReports] = useState<StolenReport[]>([
-    {
-      id: 1,
-      propertyName: '2023 Toyota Camry',
-      serialNumber: '4T1BF1FK8RU123456',
-      dateReported: '2024-01-15',
-      location: 'Lagos, Nigeria',
-      description: 'Vehicle was stolen from my driveway while parked overnight. Last seen at 10 PM.',
-      status: 'Under Investigation',
-      evidence: ['/evidence1.jpg', '/evidence2.jpg']
-    },
-    {
-      id: 2,
-      propertyName: 'iPhone 15 Pro',
-      serialNumber: 'F123456789',
-      dateReported: '2024-01-10',
-      location: 'Abuja, Nigeria',
-      description: 'Phone was stolen during a robbery at the shopping mall. Had tracking enabled.',
-      status: 'Reported',
-      evidence: ['/evidence3.jpg']
-    }
-  ]);
+  const [reports, setReports] = useState<StolenReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'Reported' | 'UnderInvestigation' | 'Resolved'
+  >('all');
 
-  const [isReporting, setIsReporting] = useState(false);
-  const [newReport, setNewReport] = useState({
-    propertyName: '',
-    serialNumber: '',
-    location: '',
-    description: '',
-    evidence: [] as File[]
-  });
-  const handleReportStolen = () => {
-    if (newReport.propertyName && newReport.serialNumber && newReport.location && newReport.description) {
-      const report: StolenReport = {
-        id: Date.now(),
-        propertyName: newReport.propertyName,
-        serialNumber: newReport.serialNumber,
-        dateReported: new Date().toISOString().split('T')[0],
-        location: newReport.location,
-        description: newReport.description,
-        status: 'Reported',
-        evidence: []
-      };
-      
-      setReports([...reports, report]);
-      setNewReport({ propertyName: '', serialNumber: '', location: '', description: '', evidence: [] });
-      setIsReporting(false);
+  const fetchReports = async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+
+      const response = await fetch('/api/stolen-reports');
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to load stolen reports');
+      }
+
+      setReports(Array.isArray(payload) ? payload : []);
+    } catch (error) {
+      console.error('Error loading stolen reports:', error);
+      setReports([]);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load stolen reports',
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDeleteReport = (id: number) => {
-    setReports(reports.filter(report => report.id !== id));
-  };
+  useEffect(() => {
+    void fetchReports();
+  }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Reported': return 'bg-yellow-100 text-yellow-800';
-      case 'Under Investigation': return 'bg-blue-100 text-blue-800';
-      case 'Resolved': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const openReportsCount = reports.filter(
+    (report) => report.status !== 'Resolved',
+  ).length;
+  const filteredReports = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return reports.filter((report) => {
+      if (statusFilter !== 'all' && report.status !== statusFilter) {
+        return false;
+      }
+
+      if (!normalizedSearchTerm) {
+        return true;
+      }
+
+      return [
+        report.property_name,
+        report.serial_number,
+        report.location,
+        report.description,
+        report.status_label,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedSearchTerm);
+    });
+  }, [reports, searchTerm, statusFilter]);
 
   return (
-    <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 max-w-9xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-[#0F2651] mb-2">Stolen Reports</h1>
-              <p className="text-gray-600">Report and track stolen or missing properties</p>
-            </div>
-            <Button 
-              onClick={() => setIsReporting(true)}
-              className="bg-red-600 hover:bg-red-700 text-white"
+      <div className="space-y-8">
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold text-[#0F2651]">
+              Stolen Reports
+            </h1>
+            <p className="text-gray-600">
+              Review the reports you have submitted for your registered
+              properties.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              className="border-[#36689e] text-[#0F2651]"
+              onClick={() => {
+                void fetchReports();
+              }}
+              disabled={isLoading}
             >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Report Stolen Item
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+            <Button
+              asChild
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              <Link href="/dashboard/properties">
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Report From Properties
+              </Link>
             </Button>
           </div>
         </div>
 
-        {/* Report Stolen Form */}
-        {isReporting && (
-          <Card className="mb-8 border-red-200">
-            <CardHeader>
-              <CardTitle className="text-[#0F2651]">Report Stolen Property</CardTitle>
-              <CardDescription>Provide details about your stolen property</CardDescription>
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Total Reports</CardDescription>
+              <CardTitle className="text-3xl text-[#0F2651]">
+                {reports.length}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="propertyName">Property Name</Label>
-                  <Input
-                    id="propertyName"
-                    placeholder="e.g., 2023 Toyota Camry"
-                    value={newReport.propertyName}
-                    onChange={(e) => setNewReport({...newReport, propertyName: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="serialNumber">Serial Number</Label>
-                  <Input
-                    id="serialNumber"
-                    placeholder="e.g., 4T1BF1FK8RU123456"
-                    value={newReport.serialNumber}
-                    onChange={(e) => setNewReport({...newReport, serialNumber: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location of Theft</Label>
-                  <div className="flex space-x-2">
-                    <MapPin className="h-4 w-4 text-gray-500 mt-2 flex-shrink-0" />
-                    <Input
-                      id="location"
-                      placeholder="e.g., Lagos, Nigeria"
-                      value={newReport.location}
-                      onChange={(e) => setNewReport({...newReport, location: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date of Theft</Label>
-                  <div className="flex space-x-2">
-                    <Calendar className="h-4 w-4 text-gray-500 mt-2 flex-shrink-0" />
-                    <Input
-                      id="date"
-                      type="date"
-                      value={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the incident and any details that might help..."
-                    value={newReport.description}
-                    onChange={(e) => setNewReport({...newReport, description: e.target.value})}
-                    rows={4}
-                  />
-                </div>
-                  <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="evidence">Evidence Photos</Label>
-                  <div className="flex items-center space-x-4">
-                    <Input
-                      id="evidence"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => setNewReport({...newReport, evidence: Array.from(e.target.files || [])})}
-                    />
-                    <Button variant="outline" className="text-[#0F2651] border-[#36689e]">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Evidence
-                    </Button>
-                  </div>
-                </div>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Open Cases</CardDescription>
+              <CardTitle className="text-3xl text-[#0F2651]">
+                {openReportsCount}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {errorMessage ? (
+          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
+
+        {!isLoading && reports.length > 0 ? (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#0F2651]">Search & Filters</CardTitle>
+              <CardDescription>
+                Search by property, serial number, location, or filter by report status.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_220px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search stolen reports"
+                  className="pl-9"
+                />
               </div>
-              <div className="flex justify-end space-x-4 mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsReporting(false)}
-                  className="text-[#0F2651] border-[#36689e]"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleReportStolen}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Submit Report
-                </Button>
-              </div>
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(
+                    event.target.value as
+                      | 'all'
+                      | 'Reported'
+                      | 'UnderInvestigation'
+                      | 'Resolved',
+                  )
+                }
+                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              >
+                <option value="all">All statuses</option>
+                <option value="Reported">Reported</option>
+                <option value="UnderInvestigation">Under Investigation</option>
+                <option value="Resolved">Resolved</option>
+              </select>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
-        {/* Reports List */}
-        <div className="space-y-6">
-          {reports.map((report) => (
-            <Card key={report.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center">
-                      <AlertTriangle className="h-8 w-8 text-red-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-[#0F2651]">{report.propertyName}</CardTitle>
-                      <CardDescription>
-                        Serial: {report.serialNumber} • Reported: {report.dateReported}
-                      </CardDescription>
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{report.location}</span>
+        {isLoading ? (
+          <div className="space-y-6">
+            <LoadingCard />
+            <LoadingCard />
+            <LoadingCard />
+          </div>
+        ) : reports.length === 0 ? (
+          <Card className="border-2 border-dashed border-gray-300">
+            <CardContent className="py-12 text-center">
+              <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-600">
+                No Stolen Reports Yet
+              </h3>
+              <p className="mx-auto mb-6 max-w-2xl text-gray-500">
+                When one of your registered properties is reported stolen, it
+                will appear here. To create a report, open your properties
+                dashboard and use the report action on the affected item.
+              </p>
+              <Button
+                asChild
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                <Link href="/dashboard/properties">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Go To Properties
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {filteredReports.map((report) => (
+              <Card key={report.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-red-100">
+                        <AlertTriangle className="h-8 w-8 text-red-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-[#0F2651]">
+                          {report.property_name}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Serial: {report.serial_number}
+                        </CardDescription>
+                        <div className="mt-3 flex flex-col gap-2 text-sm text-gray-600 sm:flex-row sm:flex-wrap sm:gap-4">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {report.location}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Reported{' '}
+                            {new Date(report.date_reported).toLocaleDateString()}
+                          </span>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>{report.dateReported}</span>
+                        <div className="mt-3">
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="border-[#36689e] text-[#0F2651]"
+                          >
+                            <Link href={`/dashboard/properties/${encodeURIComponent(report.property_id)}`}>
+                              View Property Details
+                            </Link>
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end space-y-2">
                     <Badge className={getStatusColor(report.status)}>
-                      {report.status}
+                      {report.status_label || report.status}
                     </Badge>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-[#36689e]">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-[#36689e]">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-gray-500 hover:text-red-600"
-                        onClick={() => handleDeleteReport(report.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                      <h4 className="mb-2 font-semibold text-[#0F2651]">
+                        Incident Description
+                      </h4>
+                      <p className="text-gray-700">
+                        {report.description || 'No additional description provided.'}
+                      </p>
                     </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2">
-                    <h4 className="font-semibold text-[#0F2651] mb-2">Incident Description</h4>
-                    <p className="text-gray-700">{report.description}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-[#0F2651] mb-2">Evidence</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {report.evidence.map((evidence, index) => (
-                        <div key={index} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                          <FileText className="h-8 w-8 text-gray-500" />
+                    <div>
+                      <h4 className="mb-2 font-semibold text-[#0F2651]">
+                        Evidence
+                      </h4>
+                      {report.evidence_urls.length > 0 ? (
+                        <div className="space-y-2">
+                          {report.evidence_urls.map((url, index) => (
+                            <a
+                              key={`${report.id}-${index}`}
+                              href={getEvidenceUrl(url)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-[#36689e] hover:bg-slate-50"
+                            >
+                              <FileText className="h-4 w-4" />
+                              <span className="truncate">
+                                {getEvidenceLabel(url, index)}
+                              </span>
+                            </a>
+                          ))}
                         </div>
-                      ))}
-                      {report.evidence.length === 0 && (
-                        <div className="col-span-2 text-center text-gray-500 py-4">
-                          No evidence uploaded
+                      ) : (
+                        <div className="rounded-md border border-dashed border-slate-200 px-3 py-4 text-sm text-gray-500">
+                          No evidence attached to this report.
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-        {reports.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">No Stolen Reports</h3>
-              <p className="text-gray-500 mb-6">You haven`t reported any stolen properties yet. If you need to report a stolen item, use the button above.</p>
-              <Button 
-                onClick={() => setIsReporting(true)}
-                className="bg-red-600 hover:bg-red-700 text-white"
+        {!isLoading && reports.length > 0 && filteredReports.length === 0 ? (
+          <Card className="border-2 border-dashed border-slate-300">
+            <CardContent className="py-12 text-center">
+              <Search className="mx-auto mb-4 h-10 w-10 text-slate-400" />
+              <h3 className="mb-2 text-lg font-semibold text-[#0F2651]">
+                No matching stolen reports
+              </h3>
+              <p className="mx-auto mb-6 max-w-2xl text-slate-600">
+                Adjust the search term or change the status filter to see more reports.
+              </p>
+              <Button
+                variant="outline"
+                className="border-[#36689e] text-[#0F2651]"
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                }}
               >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Report Stolen Item
+                Clear Filters
               </Button>
             </CardContent>
           </Card>
-        )}
+        ) : null}
       </div>
-    </DashboardLayout>
   );
 }
