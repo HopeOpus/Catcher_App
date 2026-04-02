@@ -36,14 +36,15 @@ export function PricingSection() {
     },
     {
       name: 'Premium',
-      price: '$9.99',
-      period: 'per month',
+      price: '$4.99',
+      period: 'Anually',
       description: 'For active users who need stronger monitoring and support.',
       features: [
         'Unlimited property registration',
         'Priority theft alerts',
         'Evidence and tracking support',
         'Priority assistance from the Catcher team',
+        'obtain a global digital identity certificate'
       ],
       cta: 'Start with Catcher',
       href: '/auth/signup',
