@@ -91,8 +91,15 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     );
   }
 
-  const email =
+  const primaryClerkEmail =
+    clerkUser?.emailAddresses?.find(
+      (emailAddress) => emailAddress.id === clerkUser?.primaryEmailAddressId,
+    )?.emailAddress ??
     clerkUser?.emailAddresses?.[0]?.emailAddress ??
+    null;
+
+  const email =
+    primaryClerkEmail ??
     getStringClaim(claims, "email", "email_address") ??
     `${userId}@catcher.local`;
   const name =

@@ -27,8 +27,8 @@ export default function SignInPage() {
             routing="path"
             path="/auth/signin"
             signUpUrl="/auth/signup"
-            afterSignInUrl="/dashboard"
-            afterSignUpUrl="/dashboard"
+            afterSignInUrl="/auth/complete"
+            afterSignUpUrl="/auth/complete"
             appearance={{
               elements: {
                 formButtonPrimary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1',
