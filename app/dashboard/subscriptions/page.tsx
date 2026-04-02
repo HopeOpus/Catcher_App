@@ -187,3 +187,6 @@ export default async function SubscriptionsPage() {
     />
   );
 }
+
+
+// This file is the main entry point for the subscriptions page in the dashboard. It fetches all necessary data for the user's properties and their coverage, then renders the SubscriptionsPageClient component with that data. It also handles authentication and redirects to the sign-in page if the user is not authenticated.
