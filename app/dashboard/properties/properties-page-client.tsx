@@ -18,6 +18,7 @@ import {
   Trash2, 
   AlertTriangle,
   CheckCircle,
+  FileText,
   Image as ImageIcon,
   X,
   Camera,
@@ -1219,6 +1220,7 @@ export default function PropertiesPageClient({
       case 'Vehicle': return <Building2 className="h-4 w-4" />;
       case 'Electronics': return <CheckCircle className="h-4 w-4" />;
       case 'Jewelry': return <AlertTriangle className="h-4 w-4" />;
+      case 'Document': return <FileText className="h-4 w-4" />;
       default: return <Building2 className="h-4 w-4" />;
     }
   };

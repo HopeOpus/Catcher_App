@@ -13,6 +13,7 @@ enum PropertyType {
   Vehicle
   Electronics
   Jewelry
+  Document
   Other
 
   @@map("property_type")
@@ -160,7 +161,9 @@ model User {
   name                   String                   @db.VarChar(255)
   role                   UserRole                 @default(User)
   profileImageUrl        String?                  @map("profile_image_url") @db.VarChar(500)
+  nin                    String?                  @db.VarChar(50)
   phoneNumber            String?                  @map("phone_number") @db.VarChar(50)
+  nextOfKinName          String?                  @map("next_of_kin_name") @db.VarChar(255)
   nextOfKinEmail         String?                  @map("next_of_kin_email") @db.VarChar(255)
   nextOfKinPhone         String?                  @map("next_of_kin_phone") @db.VarChar(50)
   createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz
@@ -220,6 +223,7 @@ model PropertyPhoto {
   propertyId String   @map("property_id") @db.VarChar(255)
   fileName   String   @map("file_name") @db.VarChar(255)
   fileUrl    String   @map("file_url") @db.VarChar(500)
+  cloudinaryPublicId String? @map("cloudinary_public_id") @db.VarChar(255)
   fileSize   Int?     @map("file_size")
   fileType   String?  @map("file_type") @db.VarChar(100)
   uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz

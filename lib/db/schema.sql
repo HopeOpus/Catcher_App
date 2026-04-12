@@ -6,6 +6,13 @@ CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(255) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'User',
+    profile_image_url VARCHAR(500),
+    nin VARCHAR(50),
+    phone_number VARCHAR(50),
+    next_of_kin_name VARCHAR(255),
+    next_of_kin_email VARCHAR(255),
+    next_of_kin_phone VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -15,7 +22,7 @@ CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('Vehicle', 'Electronics', 'Jewelry', 'Other')),
+    type VARCHAR(50) NOT NULL CHECK (type IN ('Vehicle', 'Electronics', 'Jewelry', 'Document', 'Other')),
     serial_number VARCHAR(255) NOT NULL,
     description TEXT,
     date_registered DATE NOT NULL,
@@ -32,6 +39,7 @@ CREATE TABLE IF NOT EXISTS property_photos (
     property_id VARCHAR(255) REFERENCES properties(id) ON DELETE CASCADE,
     file_name VARCHAR(255) NOT NULL,
     file_url VARCHAR(500) NOT NULL,
+    cloudinary_public_id VARCHAR(255),
     file_size INTEGER,
     file_type VARCHAR(100),
     uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -41,7 +49,7 @@ CREATE TABLE IF NOT EXISTS property_photos (
 CREATE TABLE IF NOT EXISTS pre_registered_properties (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('Vehicle', 'Electronics', 'Jewelry', 'Other')),
+    type VARCHAR(50) NOT NULL CHECK (type IN ('Vehicle', 'Electronics', 'Jewelry', 'Document', 'Other')),
     description TEXT,
     image_url VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

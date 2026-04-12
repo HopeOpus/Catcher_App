@@ -2,6 +2,7 @@ export const PROPERTY_TYPES = [
   "Vehicle",
   "Electronics",
   "Jewelry",
+  "Document",
   "Other",
 ] as const;
 
@@ -10,6 +11,36 @@ export type PropertyTypeValue = (typeof PROPERTY_TYPES)[number];
 export const PROPERTY_STATUSES = ["Active", "Flagged", "Stolen"] as const;
 
 export type PropertyStatusValue = (typeof PROPERTY_STATUSES)[number];
+
+// Legacy mobile app statuses from the Supabase-backed schema.
+// We keep the mapping here so the shared backend schema remains canonical
+// while mobile transitions from safe/stolen/unknown to Active/Flagged/Stolen.
+export const LEGACY_MOBILE_PROPERTY_STATUSES = [
+  "safe",
+  "stolen",
+  "unknown",
+] as const;
+
+export type LegacyMobilePropertyStatusValue =
+  (typeof LEGACY_MOBILE_PROPERTY_STATUSES)[number];
+
+export const LEGACY_MOBILE_TO_PROPERTY_STATUS: Record<
+  LegacyMobilePropertyStatusValue,
+  PropertyStatusValue
+> = {
+  safe: "Active",
+  stolen: "Stolen",
+  unknown: "Flagged",
+};
+
+export const PROPERTY_STATUS_TO_LEGACY_MOBILE: Record<
+  PropertyStatusValue,
+  LegacyMobilePropertyStatusValue
+> = {
+  Active: "safe",
+  Stolen: "stolen",
+  Flagged: "unknown",
+};
 
 export const SUBSCRIPTION_PERIODS = ["monthly", "yearly"] as const;
 
@@ -97,6 +128,29 @@ export function isPropertyStatus(
     typeof value === "string" &&
     PROPERTY_STATUSES.includes(value as PropertyStatusValue)
   );
+}
+
+export function isLegacyMobilePropertyStatus(
+  value: unknown,
+): value is LegacyMobilePropertyStatusValue {
+  return (
+    typeof value === "string" &&
+    LEGACY_MOBILE_PROPERTY_STATUSES.includes(
+      value as LegacyMobilePropertyStatusValue,
+    )
+  );
+}
+
+export function mapLegacyMobilePropertyStatus(
+  value: LegacyMobilePropertyStatusValue,
+): PropertyStatusValue {
+  return LEGACY_MOBILE_TO_PROPERTY_STATUS[value];
+}
+
+export function mapPropertyStatusToLegacyMobile(
+  value: PropertyStatusValue,
+): LegacyMobilePropertyStatusValue {
+  return PROPERTY_STATUS_TO_LEGACY_MOBILE[value];
 }
 
 export function isStolenReportStatus(

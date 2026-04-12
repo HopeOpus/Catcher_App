@@ -136,7 +136,7 @@ export async function PUT(request: Request) {
 
     if (!isPropertyType(type)) {
       return NextResponse.json(
-        { error: "type must be one of Vehicle, Electronics, Jewelry, or Other" },
+        { error: "type must be one of Vehicle, Electronics, Jewelry, Document, or Other" },
         { status: 400 },
       );
     }
