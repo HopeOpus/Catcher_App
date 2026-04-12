@@ -8,21 +8,10 @@ import {
   consumeRateLimit,
   resolveRateLimitIdentifierFromHeaders,
 } from "@/lib/rate-limit";
-import { MapPin, Calendar, AlertTriangle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
+import { StolenItemsExplorer, type PublicStolenItem } from "./stolen-items-explorer";
 
 export const dynamic = "force-dynamic";
-
-interface StolenItem {
-  id: string;
-  property_name: string;
-  serial_number: string;
-  date_reported: string;
-  location: string;
-  description: string;
-  status: string;
-}
 
 async function getStolenItems() {
   try {
@@ -87,7 +76,7 @@ export default async function StolenItemsPage() {
     );
   }
 
-  const items = await getStolenItems();
+  const items = (await getStolenItems()) as PublicStolenItem[];
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -112,49 +101,7 @@ export default async function StolenItemsPage() {
                 Public stolen-property records will appear here once verified reports are submitted.
               </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((item: StolenItem) => (
-                <div key={item.id} className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                  <div className="flex-grow p-6">
-                    <div className="mb-4 flex items-start justify-between">
-                      <div className="rounded-xl bg-red-50 p-3 text-red-600">
-                        <AlertTriangle className="h-6 w-6" />
-                      </div>
-                      <Badge className="border-none bg-red-100 text-red-800">
-                        {item.status || 'Reported Stolen'}
-                      </Badge>
-                    </div>
-                    <h3 className="mb-2 text-xl font-semibold text-[#0F2651]">{item.property_name}</h3>
-                    <div className="mb-4 space-y-3 text-sm text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded bg-slate-100 px-2 py-1 font-medium text-slate-700">SN: {item.serial_number}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" />
-                        <span>{item.location || 'Location not specified'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-slate-400" />
-                        <span>{new Date(item.date_reported).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    <p className="line-clamp-3 text-sm text-slate-600">
-                      {item.description}
-                    </p>
-                  </div>
-                  <div className="mt-auto border-t border-slate-100 bg-slate-50 px-6 py-4">
-                    <Link
-                      href={`/stolen-items/${item.id}`}
-                      className="block w-full text-center text-sm font-medium text-[#36689e] transition-colors hover:text-[#0F2651]"
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ) : <StolenItemsExplorer items={items} />}
         </div>
       </main>
 

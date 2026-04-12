@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import {
   getAuthenticatedAppUser,
+  resolveAuthenticatedAppUserRole,
   type AuthenticatedAppUser,
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
@@ -23,7 +24,7 @@ async function getPersistedUserRole(
     },
   });
 
-  return userRecord?.role ?? null;
+  return resolveAuthenticatedAppUserRole(authenticatedUser, userRecord?.role ?? null);
 }
 
 export async function getCurrentAdminUser(): Promise<AdminAppUser | null> {

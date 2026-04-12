@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import {
   getAuthenticatedAppUser,
+  resolveAuthenticatedAppUserRole,
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
 import { prisma } from "@/lib/prisma";
@@ -23,5 +24,9 @@ export default async function AuthCompletePage() {
     },
   });
 
-  redirect(userRecord?.role === "Admin" ? "/admin" : "/dashboard");
+  redirect(
+    resolveAuthenticatedAppUserRole(authenticatedUser, userRecord?.role ?? null) === "Admin"
+      ? "/admin"
+      : "/dashboard",
+  );
 }

@@ -1,10 +1,11 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
 
 export type AuthenticatedAppUser = {
   userId: string;
   email: string;
   name: string;
+  candidateEmails: string[];
 };
 
 type UserSyncClient = Pick<
@@ -24,28 +25,73 @@ function parseAdminEmails(value: string | undefined) {
     .filter(Boolean);
 }
 
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function collectCandidateEmails(values: Array<string | null | undefined>) {
+  const emails: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      continue;
+    }
+
+    const normalized = normalizeEmail(value);
+
+    if (seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    emails.push(normalized);
+  }
+
+  return emails;
+}
+
 function isAdminBootstrapEmail(email: string) {
-  return parseAdminEmails(process.env.ADMIN_EMAILS).includes(
-    email.trim().toLowerCase(),
-  );
+  return parseAdminEmails(process.env.ADMIN_EMAILS).includes(normalizeEmail(email));
+}
+
+export function isAdminBootstrapUser(
+  authenticatedUser: Pick<AuthenticatedAppUser, "email" | "candidateEmails">,
+) {
+  return authenticatedUser.candidateEmails.some((email) => isAdminBootstrapEmail(email));
 }
 
 function resolvePersistedUserRole(options: {
-  email: string;
+  candidateEmails: string[];
   currentRole?: UserRole | null;
   migratedRole?: UserRole | null;
 }): UserRole {
-  const { email, currentRole = null, migratedRole = null } = options;
+  const { candidateEmails, currentRole = null, migratedRole = null } = options;
 
   if (currentRole === "Admin" || migratedRole === "Admin") {
     return "Admin";
   }
 
-  if (isAdminBootstrapEmail(email)) {
+  if (candidateEmails.some((email) => isAdminBootstrapEmail(email))) {
     return "Admin";
   }
 
   return currentRole ?? migratedRole ?? "User";
+}
+
+export function resolveAuthenticatedAppUserRole(
+  authenticatedUser: Pick<AuthenticatedAppUser, "email" | "candidateEmails">,
+  persistedRole?: UserRole | null,
+): UserRole {
+  if (persistedRole === "Admin") {
+    return "Admin";
+  }
+
+  if (isAdminBootstrapUser(authenticatedUser)) {
+    return "Admin";
+  }
+
+  return persistedRole ?? "User";
 }
 
 export async function getAuthenticatedUserId(): Promise<string | null> {
@@ -91,16 +137,32 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     );
   }
 
+  if (!clerkUser) {
+    try {
+      const client = await clerkClient();
+      clerkUser = await client.users.getUser(userId);
+    } catch (error) {
+      console.error(
+        "Failed to load Clerk user by ID; continuing with auth session claims only.",
+        error,
+      );
+    }
+  }
+
   const primaryClerkEmail =
     clerkUser?.emailAddresses?.find(
       (emailAddress) => emailAddress.id === clerkUser?.primaryEmailAddressId,
     )?.emailAddress ??
     clerkUser?.emailAddresses?.[0]?.emailAddress ??
     null;
+  const candidateEmails = collectCandidateEmails([
+    primaryClerkEmail,
+    ...(clerkUser?.emailAddresses?.map((emailAddress) => emailAddress.emailAddress) ?? []),
+    getStringClaim(claims, "email", "email_address"),
+  ]);
 
   const email =
-    primaryClerkEmail ??
-    getStringClaim(claims, "email", "email_address") ??
+    candidateEmails[0] ??
     `${userId}@catcher.local`;
   const name =
     clerkUser?.fullName?.trim() ||
@@ -119,6 +181,7 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     userId,
     email,
     name,
+    candidateEmails,
   };
 }
 
@@ -139,19 +202,26 @@ export async function syncAuthenticatedAppUserRecord(
       nextOfKinPhone: true,
     },
   });
-  const existingUserByEmail = await db.user.findUnique({
-    where: { email: authenticatedUser.email },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      profileImageUrl: true,
-      phoneNumber: true,
-      nextOfKinEmail: true,
-      nextOfKinPhone: true,
-    },
-  });
+  const existingUserByEmail =
+    authenticatedUser.candidateEmails.length > 0
+      ? await db.user.findFirst({
+          where: {
+            email: {
+              in: authenticatedUser.candidateEmails,
+            },
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            profileImageUrl: true,
+            phoneNumber: true,
+            nextOfKinEmail: true,
+            nextOfKinPhone: true,
+          },
+        })
+      : null;
 
   const migratedProfileData =
     existingUserByEmail &&
@@ -206,7 +276,7 @@ export async function syncAuthenticatedAppUserRecord(
         email: authenticatedUser.email,
         name: authenticatedUser.name,
         role: resolvePersistedUserRole({
-          email: authenticatedUser.email,
+          candidateEmails: authenticatedUser.candidateEmails,
           currentRole: existingUserById.role,
           migratedRole: migratedProfileData?.role,
         }),
@@ -230,7 +300,7 @@ export async function syncAuthenticatedAppUserRecord(
       email: authenticatedUser.email,
       name: authenticatedUser.name,
       role: resolvePersistedUserRole({
-        email: authenticatedUser.email,
+        candidateEmails: authenticatedUser.candidateEmails,
         migratedRole: migratedProfileData?.role,
       }),
       profileImageUrl: migratedProfileData?.profileImageUrl ?? null,

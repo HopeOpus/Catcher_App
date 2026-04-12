@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/card';
 import {
   getAuthenticatedAppUser,
+  resolveAuthenticatedAppUserRole,
   syncAuthenticatedAppUserRecord,
 } from '@/lib/authenticated-user';
 import {
@@ -66,7 +67,9 @@ export default async function DashboardPage() {
       role: true,
     },
   });
-  const isAdminUser = currentUserRecord?.role === 'Admin';
+  const isAdminUser =
+    resolveAuthenticatedAppUserRole(authenticatedUser, currentUserRecord?.role ?? null) ===
+    'Admin';
 
   if (isAdminUser) {
     redirect('/admin');
