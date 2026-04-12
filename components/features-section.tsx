@@ -33,9 +33,9 @@ export function FeaturesSection() {
       color: 'from-orange-500 to-red-500',
     },
     {
-      title: 'Clear ownership history',
+      title: 'Global Digital Identity Certificate',
       description:
-        'Keep one place for the details that help prove what is yours, instead of scattered chats, screenshots, and notes.',
+        'Get a Global Digital Identity Certificate generated for every property registered',
       icon: Shield,
       color: 'from-indigo-500 to-blue-500',
     },
