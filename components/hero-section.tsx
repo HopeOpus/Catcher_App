@@ -77,14 +77,14 @@ export default function HeroSection() {
                                 },
                                 ...transitionVariants,
                             }}
-                            className="mt-12 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                            className="mt-12 flex flex-col items-start gap-8 sm:flex-row sm:items-center sm:gap-8">
                             <SignedOut>
                                 <Button
                                     asChild
                                     size="lg"
                                     className="rounded-xl bg-gradient-to-r from-[#336699] to-[#0F2651] px-5 text-base text-white">
                                     <Link href="/auth/signup">
-                                        <span className="text-nowrap">Create Free Account</span>
+                                        <span className="text-nowrap">Create a Free Account</span>
                                     </Link>
                                 </Button>
                             </SignedOut>
@@ -102,7 +102,7 @@ export default function HeroSection() {
                                 asChild
                                 size="lg"
                                 variant="outline"
-                                className="rounded-xl border-[#36689e] px-5 text-base text-[#0F2651] hover:bg-[#36689e]/10">
+                                className="rounded-xl gap-6 border-[#36689e] px-5 text-base text-[#0F2651] hover:bg-[#36689e]/10 sm:ml-6">
                                 <Link href="/stolen-items">
                                     <span className="text-nowrap">Browse Stolen Items</span>
                                 </Link>
