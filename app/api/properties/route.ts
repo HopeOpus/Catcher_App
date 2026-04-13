@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
@@ -65,7 +66,44 @@ function serializeProperty(property: PropertyRecord) {
   };
 }
 
-export async function GET() {
+function buildPropertyQueryFilters(
+  searchParams: URLSearchParams,
+  userId: string,
+): Prisma.PropertyWhereInput {
+  const status = searchParams.get("status")?.trim() ?? "";
+  const query = searchParams.get("query")?.trim() ?? "";
+
+  const where: Prisma.PropertyWhereInput = {
+    userId,
+    archivedAt: null,
+  };
+
+  if (status && status !== "all" && isPropertyStatus(status)) {
+    where.status = status;
+  }
+
+  if (query) {
+    const orConditions: Prisma.PropertyWhereInput[] = [
+      { name: { contains: query, mode: "insensitive" } },
+      { serialNumber: { contains: query, mode: "insensitive" } },
+      { description: { contains: query, mode: "insensitive" } },
+    ];
+
+    if (isPropertyType(query)) {
+      orConditions.push({ type: query });
+    }
+
+    if (isPropertyStatus(query)) {
+      orConditions.push({ status: query });
+    }
+
+    where.OR = orConditions;
+  }
+
+  return where;
+}
+
+export async function GET(request: Request) {
   try {
     const authenticatedUser = await getAuthenticatedAppUser();
 
@@ -78,26 +116,47 @@ export async function GET() {
       userId: authenticatedUser.userId,
     });
 
-    const properties = await prisma.property.findMany({
-      where: {
-        userId: authenticatedUser.userId,
-        archivedAt: null,
-      },
-      include: {
-        photos: {
-          orderBy: { uploadedAt: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
+    const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
+    const where = buildPropertyQueryFilters(searchParams, authenticatedUser.userId);
 
-    return NextResponse.json(properties.map(serializeProperty));
+    const [count, properties] = await Promise.all([
+      prisma.property.count({ where }),
+      prisma.property.findMany({
+        where,
+        include: {
+          photos: {
+            orderBy: { uploadedAt: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: limit,
+      }),
+    ]);
+
+    const data = properties.map(serializeProperty);
+    const next = offset + data.length < count ? String(offset + data.length) : "";
+    const previous = offset > 0 ? String(Math.max(offset - limit, 0)) : "";
+
+    return NextResponse.json({
+      data,
+      error: null,
+      status: 200,
+      message: "Properties fetched successfully.",
+      count,
+      next,
+      previous,
+    });
   } catch (error) {
-    console.error('Error fetching properties:', error);
-    return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 });
+    console.error("Error fetching properties:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch properties" },
+      { status: 500 },
+    );
   }
 }
-
 
 // POST - Create a new property
 export async function POST(request: Request) {
@@ -136,7 +195,10 @@ export async function PUT(request: Request) {
 
     if (!isPropertyType(type)) {
       return NextResponse.json(
-        { error: "type must be one of Vehicle, Electronics, Jewelry, Document, or Other" },
+        {
+          error:
+            "type must be one of Vehicle, Electronics, Jewelry, Document, or Other",
+        },
         { status: 400 },
       );
     }
@@ -240,10 +302,13 @@ export async function DELETE(request: Request) {
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
+    const id = searchParams.get("id");
+
     if (!id) {
-      return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Property ID is required" },
+        { status: 400 },
+      );
     }
 
     await syncPropertyLifecycle(prisma, {
@@ -256,12 +321,18 @@ export async function DELETE(request: Request) {
     });
 
     if (result.count === 0) {
-      return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, message: 'Property deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: "Property deleted successfully",
+    });
   } catch (error) {
-    console.error('Error deleting property:', error);
-    return NextResponse.json({ error: 'Failed to delete property' }, { status: 500 });
+    console.error("Error deleting property:", error);
+    return NextResponse.json(
+      { error: "Failed to delete property" },
+      { status: 500 },
+    );
   }
 }
