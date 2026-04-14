@@ -1,5 +1,6 @@
 import { Navigation } from "@/components/navigation";
 import HeroSection from "@/components/hero-section";
+import { FranchiseSection } from "@/components/franchise-section";
 import { StatsCounter } from "@/components/stats-counter";
 import { FeaturesSection } from "@/components/features-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
@@ -11,12 +12,13 @@ import ContentSection from "@/components/content-5";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <Navigation />
 
       {/* Main Content */}
       <main>
         <HeroSection />
+        <FranchiseSection />
         <StatsCounter />
         <FeaturesSection />
         <ContentSection />

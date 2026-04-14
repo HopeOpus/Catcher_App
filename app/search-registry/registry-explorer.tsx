@@ -78,26 +78,12 @@ function getVisiblePageNumbers(currentPage: number, totalPages: number) {
   );
 }
 
-function getStatusSummaryLabel(status: PublicRegistryStatusFilter) {
-  switch (status) {
-    case "reported-stolen":
-      return "reported stolen records";
-    case "not-reported-stolen":
-      return "not reported stolen records";
-    case "all":
-    default:
-      return "searchable property registry records";
-  }
-}
-
-function getPropertyTypeSummaryLabel(propertyType: PublicRegistryPropertyTypeFilter) {
-  return propertyType === "all" ? "all property types" : `${propertyType} records`;
-}
-
 export function RegistryExplorer({
   result,
+  hasSearched,
 }: {
   result: PublicRegistrySearchResult;
+  hasSearched: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -144,8 +130,15 @@ export function RegistryExplorer({
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const normalizedQuery = query.trim();
+
+    if (!normalizedQuery) {
+      return;
+    }
+
     navigateToRegistryState({
-      q: query,
+      q: normalizedQuery,
       page: 1,
     });
   };
@@ -193,6 +186,7 @@ export function RegistryExplorer({
   );
   const hasSearchQuery = result.state.q.length > 0;
   const hasResults = result.totalCount > 0;
+  const isSearchActionDisabled = isPending || query.trim().length === 0;
   const detailQueryString = buildPublicRegistryQueryString({
     q: result.state.q,
     status: result.state.status,
@@ -204,7 +198,7 @@ export function RegistryExplorer({
   return (
     <div className="space-y-8">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-5">
           <div className="max-w-3xl space-y-2">
             <h2 className="text-xl font-semibold text-[#0F2651]">
               Search Registry
@@ -218,9 +212,9 @@ export function RegistryExplorer({
 
           <form
             onSubmit={handleSearchSubmit}
-            className="grid w-full gap-3 lg:grid-cols-[minmax(0,1fr)_200px_220px_auto] xl:max-w-5xl"
+            className="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_200px_220px_auto] xl:items-end"
           >
-            <div className="relative">
+            <div className="relative md:col-span-2 xl:col-span-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={query}
@@ -271,8 +265,8 @@ export function RegistryExplorer({
 
             <Button
               type="submit"
-              className="h-12 rounded-2xl bg-[#36689e] px-5 text-white hover:bg-[#0F2651]"
-              disabled={isPending}
+              className="h-12 w-full rounded-2xl bg-[#36689e] px-5 text-white hover:bg-[#0F2651] md:col-span-2 xl:col-span-1 xl:w-auto"
+              disabled={isSearchActionDisabled}
             >
               {isPending ? (
                 <>
@@ -291,9 +285,9 @@ export function RegistryExplorer({
 
         <div className="mt-4 flex flex-col gap-2 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            {hasSearchQuery
+            {hasSearched
               ? `Showing ${result.totalCount} registry record${result.totalCount === 1 ? "" : "s"} for "${result.state.q}".`
-              : `Showing ${result.totalCount} ${getStatusSummaryLabel(result.state.status)} across ${getPropertyTypeSummaryLabel(result.state.propertyType)}.`}
+              : "Enter an item name, serial number, location, report detail, or status to search the registry."}
           </p>
           <div className="flex items-center gap-4">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -411,7 +405,19 @@ export function RegistryExplorer({
         </div>
       </div>
 
-      {!hasResults ? (
+      {!hasSearched ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
+          <Search className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+          <h2 className="text-2xl font-semibold text-[#0F2651]">Search the public registry</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+            No property records are shown by default. Enter a search term above to look up a
+            registered item and see the matching registry result.
+          </p>
+          <p className="mx-auto mt-4 max-w-2xl text-sm text-slate-500">
+            You can search by item name, serial number, location, report description, or status.
+          </p>
+        </div>
+      ) : !hasResults ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
           <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-slate-400" />
           <h2 className="text-2xl font-semibold text-[#0F2651]">No matching registry records found</h2>
@@ -432,7 +438,7 @@ export function RegistryExplorer({
                 })
               }
             >
-              View All Registry Records
+              Start a new search
             </Button>
             <p className="text-sm text-slate-500">
               Tip: search by property type, owner detail, serial number, location, or theft status.

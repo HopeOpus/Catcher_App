@@ -74,18 +74,32 @@ export default async function SearchRegistryPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const state = parsePublicRegistrySearchParams(resolvedSearchParams);
+  const hasSearched = state.q.length > 0;
   let result = null;
   let isRegistryUnavailable = false;
 
-  try {
-    result = await getPublicRegistrySearchResult(state);
-  } catch (error) {
-    if (isDatabaseConnectionError(error)) {
-      console.error("Public registry database connection error:", error);
-      isRegistryUnavailable = true;
-    } else {
-      throw error;
+  if (hasSearched) {
+    try {
+      result = await getPublicRegistrySearchResult(state);
+    } catch (error) {
+      if (isDatabaseConnectionError(error)) {
+        console.error("Public registry database connection error:", error);
+        isRegistryUnavailable = true;
+      } else {
+        throw error;
+      }
     }
+  } else {
+    result = {
+      items: [],
+      totalCount: 0,
+      totalPages: 0,
+      page: 1,
+      pageSize: state.pageSize,
+      rangeStart: 0,
+      rangeEnd: 0,
+      state,
+    };
   }
 
   if (isRegistryUnavailable || !result) {
@@ -123,12 +137,6 @@ export default async function SearchRegistryPage({
     );
   }
 
-  const showDefaultEmptyState =
-    result.totalCount === 0 &&
-    result.state.q.length === 0 &&
-    result.state.status === "all" &&
-    result.state.propertyType === "all";
-
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Navigation />
@@ -145,15 +153,7 @@ export default async function SearchRegistryPage({
             </p>
           </div>
 
-          {showDefaultEmptyState ? (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
-              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-slate-400" />
-              <h2 className="text-2xl font-semibold text-[#0F2651]">No registry records yet</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-                Public property records will appear here once active Catcher registrations are available.
-              </p>
-            </div>
-          ) : <RegistryExplorer result={result} />}
+          <RegistryExplorer result={result} hasSearched={hasSearched} />
         </div>
       </main>
 

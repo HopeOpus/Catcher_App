@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 
 const stats = [
-  { label: "Total Users", value: 800, suffix: "" },
-  { label: "Stolen Properties Reclaimed", value: 1300, suffix: "" },
-  { label: "Countries Reached", value: 4, suffix: "" },
-  { label: "Years", value: 5, suffix: " Years" },
+  { label: "Users", value: 3200, suffix: "" },
+  { label: "Items Uploaded", value: 5020, suffix: "" },
+  { label: "Recovered Properties", value: 1300, suffix: "" },
+  { label: "Countries", value: 4, suffix: "" },
 ];
 
 export function StatsCounter() {

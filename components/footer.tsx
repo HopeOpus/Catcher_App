@@ -64,6 +64,14 @@ export default function Footer() {
                   Search Registry
                 </Link>
               </li>
+              <li>
+                <Link href="/auth/signup" className="transition-colors hover:text-white">
+                  Wallet/Referral
+                </Link>
+              </li>
+              <li>
+                <span className="cursor-default text-slate-400">Franchise</span>
+              </li>
             </ul>
           </div>
           <div>
