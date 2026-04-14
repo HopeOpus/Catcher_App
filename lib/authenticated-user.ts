@@ -98,7 +98,7 @@ export function resolveAuthenticatedAppUserRole(
 }
 
 export async function getAuthenticatedUserId(): Promise<string | null> {
-  const { userId } = await auth();
+  const { userId } = await auth({ acceptsToken: "session_token" });
 
   if (userId) {
     return userId;
@@ -130,6 +130,14 @@ function getStringClaim(
   }
 
   return null;
+}
+
+function getClerkPublishableKey() {
+  return (
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+    process.env.CLERK_PUBLISHABLE_KEY ??
+    ""
+  );
 }
 
 async function buildAuthenticatedAppUserFromResolvedIdentity(options: {
@@ -223,7 +231,7 @@ export async function getAuthenticatedAppUser(
     try {
       const requestClerkClient = createClerkClient({
         secretKey: process.env.CLERK_SECRET_KEY,
-        publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        publishableKey: getClerkPublishableKey(),
         jwtKey: process.env.CLERK_JWT_KEY,
       });
       const requestState = await requestClerkClient.authenticateRequest(requestForAuth, {
@@ -250,7 +258,7 @@ export async function getAuthenticatedAppUser(
     }
   }
 
-  const { userId, sessionClaims } = await auth();
+  const { userId, sessionClaims } = await auth({ acceptsToken: "session_token" });
 
   if (!userId) {
     const authorizationHeader = requestHeaders.get("authorization");
