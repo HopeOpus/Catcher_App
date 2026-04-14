@@ -1,3 +1,4 @@
+import { verifyToken } from "@clerk/backend";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
 
@@ -191,6 +192,86 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     candidateEmails,
     emailVerified,
   };
+}
+
+export async function getAuthenticatedAppUserFromSessionToken(
+  sessionToken: string | null | undefined,
+): Promise<AuthenticatedAppUser | null> {
+  const token = typeof sessionToken === "string" ? sessionToken.trim() : "";
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const claims = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      jwtKey: process.env.CLERK_JWT_KEY,
+    });
+
+    const userId =
+      getStringClaim(claims as Record<string, unknown>, "sub") ??
+      null;
+
+    if (!userId) {
+      return null;
+    }
+
+    let clerkUser = null;
+
+    try {
+      const client = await clerkClient();
+      clerkUser = await client.users.getUser(userId);
+    } catch (error) {
+      console.error(
+        "Failed to load Clerk user from verified session token; falling back to token claims.",
+        error,
+      );
+    }
+
+    const primaryClerkEmail =
+      clerkUser?.emailAddresses?.find(
+        (emailAddress) => emailAddress.id === clerkUser?.primaryEmailAddressId,
+      )?.emailAddress ??
+      clerkUser?.emailAddresses?.[0]?.emailAddress ??
+      null;
+    const candidateEmails = collectCandidateEmails([
+      primaryClerkEmail,
+      ...(clerkUser?.emailAddresses?.map((emailAddress) => emailAddress.emailAddress) ?? []),
+      getStringClaim(claims as Record<string, unknown>, "email", "email_address"),
+    ]);
+    const email = candidateEmails[0] ?? `${userId}@catcher.local`;
+    const emailVerified =
+      clerkUser?.emailAddresses?.some(
+        (emailAddress) =>
+          emailAddress.verification?.status === "verified" &&
+          candidateEmails.includes(emailAddress.emailAddress.trim().toLowerCase()),
+      ) ??
+      false;
+    const name =
+      clerkUser?.fullName?.trim() ||
+      getStringClaim(claims as Record<string, unknown>, "name", "full_name") ||
+      [
+        clerkUser?.firstName ?? getStringClaim(claims as Record<string, unknown>, "given_name", "first_name"),
+        clerkUser?.lastName ?? getStringClaim(claims as Record<string, unknown>, "family_name", "last_name"),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim() ||
+      email.split("@")[0] ||
+      "Catcher User";
+
+    return {
+      userId,
+      email,
+      name,
+      candidateEmails,
+      emailVerified,
+    };
+  } catch (error) {
+    console.error("Failed to verify Clerk session token for upload request.", error);
+    return null;
+  }
 }
 
 export async function syncAuthenticatedAppUserRecord(

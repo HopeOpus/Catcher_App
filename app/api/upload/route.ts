@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedAppUser } from '@/lib/authenticated-user';
+import {
+  getAuthenticatedAppUser,
+  getAuthenticatedAppUserFromSessionToken,
+} from '@/lib/authenticated-user';
 import {
   isCloudinaryConfigured,
   validateImageUploadFile,
@@ -16,7 +19,13 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const authenticatedUser = await getAuthenticatedAppUser();
+    const formData = await request.formData();
+    const sessionToken = formData.get('sessionToken');
+    const authenticatedUser =
+      (await getAuthenticatedAppUser()) ??
+      (await getAuthenticatedAppUserFromSessionToken(
+        typeof sessionToken === 'string' ? sessionToken : null,
+      ));
 
     if (!authenticatedUser?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -48,7 +57,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const formData = await request.formData();
     const file = formData.get('file') as File;
     const propertyId = (formData.get('propertyId') as string) || 'general';
 
