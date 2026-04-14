@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { verifyToken } from "@clerk/backend";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
@@ -98,7 +99,22 @@ export function resolveAuthenticatedAppUserRole(
 
 export async function getAuthenticatedUserId(): Promise<string | null> {
   const { userId } = await auth();
-  return userId ?? null;
+
+  if (userId) {
+    return userId;
+  }
+
+  const requestHeaders = await headers();
+  const authorizationHeader = requestHeaders.get("authorization");
+  const bearerToken =
+    authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
+
+  if (!bearerToken) {
+    return null;
+  }
+
+  const authenticatedUser = await getAuthenticatedAppUserFromSessionToken(bearerToken);
+  return authenticatedUser?.userId ?? null;
 }
 
 function getStringClaim(
@@ -120,7 +136,16 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
   const { userId, sessionClaims } = await auth();
 
   if (!userId) {
-    return null;
+    const requestHeaders = await headers();
+    const authorizationHeader = requestHeaders.get("authorization");
+    const bearerToken =
+      authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
+
+    if (!bearerToken) {
+      return null;
+    }
+
+    return getAuthenticatedAppUserFromSessionToken(bearerToken);
   }
 
   const claims =
