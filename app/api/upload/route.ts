@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getAuthenticatedAppUser } from '@/lib/authenticated-user';
 import {
   isCloudinaryConfigured,
   validateImageUploadFile,
@@ -16,9 +16,9 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const authenticatedUser = await getAuthenticatedAppUser();
 
-    if (!userId) {
+    if (!authenticatedUser?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       scope: 'api:upload',
       identifier: resolveRateLimitIdentifier({
         request,
-        userId,
+        userId: authenticatedUser.userId,
       }),
       limit: 20,
       windowMs: 10 * 60 * 1000,
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    const uploadKey = `${sanitizeStorageSegment(userId)}_${sanitizeStorageSegment(propertyId)}`;
+    const uploadKey = `${sanitizeStorageSegment(authenticatedUser.userId)}_${sanitizeStorageSegment(propertyId)}`;
 
     if (!isCloudinaryConfigured()) {
       return NextResponse.json(
