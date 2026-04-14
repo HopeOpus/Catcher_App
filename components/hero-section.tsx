@@ -77,14 +77,14 @@ export default function HeroSection() {
                                 },
                                 ...transitionVariants,
                             }}
-                            className="mt-12 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                            className="mt-12 flex flex-col items-start gap-8 sm:flex-row sm:items-center sm:gap-8">
                             <SignedOut>
                                 <Button
                                     asChild
                                     size="lg"
                                     className="rounded-xl bg-gradient-to-r from-[#336699] to-[#0F2651] px-5 text-base text-white">
                                     <Link href="/auth/signup">
-                                        <span className="text-nowrap">Create Free Account</span>
+                                        <span className="text-nowrap">Create a Free Account</span>
                                     </Link>
                                 </Button>
                             </SignedOut>
