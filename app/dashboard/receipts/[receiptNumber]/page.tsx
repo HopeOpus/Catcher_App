@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, CreditCard, Shield } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CreditCard, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,28 @@ function formatDate(value: Date | null) {
     month: 'long',
     year: 'numeric',
   }).format(value);
+}
+
+function getReceiptStatusLabel(status: string | null | undefined) {
+  return status ?? 'Confirmed';
+}
+
+function getReceiptStatusClasses(status: string | null | undefined) {
+  const normalizedStatus = status?.toLowerCase() ?? '';
+
+  if (normalizedStatus.includes('success') || normalizedStatus.includes('complete')) {
+    return 'bg-green-100 text-green-800';
+  }
+
+  if (normalizedStatus.includes('pending') || normalizedStatus.includes('process')) {
+    return 'bg-amber-100 text-amber-800';
+  }
+
+  if (normalizedStatus.includes('fail') || normalizedStatus.includes('cancel')) {
+    return 'bg-red-100 text-red-800';
+  }
+
+  return 'bg-slate-100 text-slate-700';
 }
 
 export default async function ReceiptDetailPage({
@@ -75,6 +97,11 @@ export default async function ReceiptDetailPage({
     notFound();
   }
 
+  const receiptStatus =
+    receipt.paymentEventLog?.transactionStatus ??
+    receipt.paymentEventLog?.processingOutcome ??
+    'Confirmed';
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 print:hidden lg:flex-row lg:items-start lg:justify-between">
@@ -85,6 +112,9 @@ export default async function ReceiptDetailPage({
             </Badge>
             <Badge className="bg-slate-100 text-slate-700">
               {receipt.receiptNumber}
+            </Badge>
+            <Badge className={getReceiptStatusClasses(receiptStatus)}>
+              {getReceiptStatusLabel(receiptStatus)}
             </Badge>
           </div>
           <h1 className="mt-3 text-3xl font-bold text-[#0F2651]">Receipt</h1>
@@ -129,6 +159,21 @@ export default async function ReceiptDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-8 px-6 py-6">
+          <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-5 text-sm text-green-800">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5" />
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  Payment status: {getReceiptStatusLabel(receiptStatus)}
+                </p>
+                <p>
+                  This receipt covers {receipt.property.name}. Keep it for payment proof, renewal
+                  follow-up, or account review.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 p-5">
               <div className="mb-4 flex items-center gap-2">
@@ -181,7 +226,7 @@ export default async function ReceiptDetailPage({
                 </p>
                 <p>
                   <span className="font-medium text-[#0F2651]">Status:</span>{' '}
-                  {receipt.paymentEventLog?.transactionStatus ?? 'Confirmed'}
+                  {getReceiptStatusLabel(receiptStatus)}
                 </p>
               </div>
             </div>
@@ -221,6 +266,19 @@ export default async function ReceiptDetailPage({
               Catcher. Use the print button above to save a PDF copy for your
               records.
             </p>
+            <div className="mt-4">
+              <Button
+                asChild
+                variant="outline"
+                className="border-[#36689e] text-[#0F2651] print:hidden"
+              >
+                <Link
+                  href={`/dashboard/properties/${encodeURIComponent(receipt.property.id)}`}
+                >
+                  View Property Details
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

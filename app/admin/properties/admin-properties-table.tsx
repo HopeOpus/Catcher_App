@@ -300,6 +300,8 @@ export function AdminPropertiesTable({
       <AdminDataTable
         columns={columns}
         data={filteredProperties}
+        baseCount={properties.length}
+        selectedCount={selectedPropertyIds.length}
         entityLabel="properties"
         searchPlaceholder="Search by property, serial number, owner, or subscription"
         emptyStateTitle="No properties found"
@@ -408,6 +410,19 @@ export function AdminPropertiesTable({
               <form
                 action={bulkArchivePropertiesAction}
                 className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                onSubmit={(event) => {
+                  if (selectedPropertyIds.length === 0) {
+                    return;
+                  }
+
+                  const confirmed = window.confirm(
+                    `Archive ${selectedPropertyIds.length} selected propert${selectedPropertyIds.length === 1 ? 'y' : 'ies'}?`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input
                   type="hidden"
@@ -448,6 +463,19 @@ export function AdminPropertiesTable({
               <form
                 action={bulkRestorePropertiesAction}
                 className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                onSubmit={(event) => {
+                  if (selectedPropertyIds.length === 0) {
+                    return;
+                  }
+
+                  const confirmed = window.confirm(
+                    `Restore ${selectedPropertyIds.length} selected propert${selectedPropertyIds.length === 1 ? 'y' : 'ies'} to live visibility?`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input
                   type="hidden"
@@ -621,6 +649,15 @@ export function AdminPropertiesTable({
               <form
                 action={updatePropertyAction}
                 className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Save property changes for ${selectedProperty.name}?`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input type="hidden" name="property_id" value={selectedProperty.id} />
                 <input type="hidden" name="redirect_to" value="/admin/properties" />
@@ -696,6 +733,15 @@ export function AdminPropertiesTable({
                   <form
                     action={restorePropertyAction}
                     className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 xl:min-w-[18rem]"
+                    onSubmit={(event) => {
+                      const confirmed = window.confirm(
+                        `Restore ${selectedProperty.name} to live visibility?`,
+                      );
+
+                      if (!confirmed) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
                     <input type="hidden" name="property_id" value={selectedProperty.id} />
                     <input type="hidden" name="redirect_to" value="/admin/properties" />
@@ -707,6 +753,15 @@ export function AdminPropertiesTable({
                   <form
                     action={archivePropertyAction}
                     className="flex flex-1 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+                    onSubmit={(event) => {
+                      const confirmed = window.confirm(
+                        `Archive ${selectedProperty.name}?`,
+                      );
+
+                      if (!confirmed) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
                     <input type="hidden" name="property_id" value={selectedProperty.id} />
                     <input type="hidden" name="redirect_to" value="/admin/properties" />
@@ -729,6 +784,15 @@ export function AdminPropertiesTable({
                 <form
                   action={deletePropertyAction}
                   className="rounded-2xl border border-red-200 bg-red-50 p-4 xl:min-w-[16rem]"
+                  onSubmit={(event) => {
+                    const confirmed = window.confirm(
+                      `Delete ${selectedProperty.name} and all dependent records? This cannot be undone.`,
+                    );
+
+                    if (!confirmed) {
+                      event.preventDefault();
+                    }
+                  }}
                 >
                   <input type="hidden" name="property_id" value={selectedProperty.id} />
                   <input type="hidden" name="redirect_to" value="/admin/properties" />

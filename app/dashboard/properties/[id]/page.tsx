@@ -81,6 +81,24 @@ function getCoverageTone(label: string) {
   }
 }
 
+function getPaymentStatusTone(status: string | null | undefined) {
+  const normalizedStatus = status?.toLowerCase() ?? "";
+
+  if (normalizedStatus.includes("success") || normalizedStatus.includes("complete")) {
+    return "bg-green-100 text-green-800";
+  }
+
+  if (normalizedStatus.includes("pending") || normalizedStatus.includes("process")) {
+    return "bg-amber-100 text-amber-800";
+  }
+
+  if (normalizedStatus.includes("fail") || normalizedStatus.includes("cancel")) {
+    return "bg-red-100 text-red-800";
+  }
+
+  return "bg-slate-100 text-slate-700";
+}
+
 export default async function PropertyDetailsPage({
   params,
 }: PropertyDetailsPageProps) {
@@ -121,6 +139,7 @@ export default async function PropertyDetailsPage({
         include: {
           paymentEventLog: {
             select: {
+              reference: true,
               transactionStatus: true,
               processingOutcome: true,
             },
@@ -159,6 +178,11 @@ export default async function PropertyDetailsPage({
     coverage: currentAndUpcoming.currentCoverage,
     propertyArchivedAt: property.archivedAt,
   });
+  const latestReceipt = property.billingReceipts[0] ?? null;
+  const latestPaymentStatus =
+    latestReceipt?.paymentEventLog?.transactionStatus ??
+    latestReceipt?.paymentEventLog?.processingOutcome ??
+    (latestReceipt ? 'Confirmed' : null);
   const primaryActionLabel = property.archivedAt
     ? 'Restore Subscription'
     : currentAndUpcoming.currentCoverage
@@ -356,6 +380,16 @@ export default async function PropertyDetailsPage({
                           <Badge className="bg-[#36689e]/10 text-[#0F2651]">
                             {receipt.receiptNumber}
                           </Badge>
+                          <Badge
+                            className={getPaymentStatusTone(
+                              receipt.paymentEventLog?.transactionStatus ??
+                                receipt.paymentEventLog?.processingOutcome,
+                            )}
+                          >
+                            {receipt.paymentEventLog?.transactionStatus ??
+                              receipt.paymentEventLog?.processingOutcome ??
+                              'Confirmed'}
+                          </Badge>
                         </div>
                         <div className="flex flex-wrap gap-4 text-sm text-slate-600">
                           <span>Amount: {formatNgnFromKobo(receipt.amountKobo)}</span>
@@ -423,6 +457,32 @@ export default async function PropertyDetailsPage({
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Latest Payment
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-[#0F2651]">
+                      {latestReceipt
+                        ? formatNgnFromKobo(latestReceipt.amountKobo)
+                        : 'No payment yet'}
+                    </p>
+                    {latestPaymentStatus ? (
+                      <Badge className={getPaymentStatusTone(latestPaymentStatus)}>
+                        {latestPaymentStatus}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {latestReceipt?.reference ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Ref: {latestReceipt.reference}
+                    </p>
+                  ) : latestReceipt?.paymentEventLog?.reference ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Ref: {latestReceipt.paymentEventLog.reference}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Next Renewal Point
                   </p>
                   <p className="mt-2 text-sm font-medium text-[#0F2651]">
@@ -472,6 +532,21 @@ export default async function PropertyDetailsPage({
                     View Billing History
                   </Link>
                 </Button>
+                {latestReceipt ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-[#36689e] text-[#0F2651]"
+                  >
+                    <Link
+                      href={`/dashboard/receipts/${encodeURIComponent(
+                        latestReceipt.receiptNumber,
+                      )}`}
+                    >
+                      Latest Receipt
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
             </CardContent>
           </Card>

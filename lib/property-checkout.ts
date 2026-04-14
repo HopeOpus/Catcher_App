@@ -33,10 +33,18 @@ import {
 } from "@/lib/property-public-verification";
 import { safeCreateNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { qualifyReferralForCompletedCheckout } from "@/lib/referral-rewards";
+import {
+  convertNgnKoboToWalletCredits,
+  refundWalletSpend,
+  spendWalletCredits,
+} from "@/lib/wallet";
 
 export type PropertyCheckoutReturnPath =
   | "/dashboard/properties"
   | "/dashboard/subscriptions";
+
+export type PropertyCheckoutPaymentMethod = "cash" | "wallet";
 
 type CreatePropertyCheckoutInput = {
   authenticatedUser: AuthenticatedAppUser;
@@ -50,6 +58,7 @@ type CreatePropertyCheckoutInput = {
   status: PropertyStatus;
   photoUrls: string[];
   planCode: PropertyPlanCodeValue;
+  paymentMethod?: PropertyCheckoutPaymentMethod;
   dateRegistered?: Date;
 };
 
@@ -65,6 +74,15 @@ type CreatePropertyCheckoutResult =
       checkoutSessionId: string;
       reference: string;
       authorizationUrl: string;
+    }
+  | {
+      mode: "wallet";
+      checkoutSessionId: string;
+      propertyId: string;
+      coverageId: string;
+      debitedCredits: number;
+      remainingWalletCredits: number;
+      receiptNumber: string | null;
     };
 
 type CheckoutCompletionResult =
@@ -497,6 +515,20 @@ async function activatePropertyCheckoutSession(
     });
   }
 
+  if (newlyCompleted) {
+    try {
+      await qualifyReferralForCompletedCheckout({
+        referredUserId: session.userId,
+        checkoutSessionId: session.id,
+        coverageId,
+        planCode: session.planCode,
+        qualifiedAt: settlement.settledAt,
+      });
+    } catch (error) {
+      console.error("Failed to qualify referral rewards for checkout session:", error);
+    }
+  }
+
   return {
     outcome: "completed",
     checkoutSessionId,
@@ -537,6 +569,7 @@ export async function createPropertyCheckoutSession(
   }
 
   const plan = getPropertyPlanDefinition(input.planCode);
+  const paymentMethod = input.paymentMethod ?? "cash";
   const checkoutSessionId = randomUUID();
   const dateRegistered = input.dateRegistered ?? new Date();
   const returnPath = normalizePropertyCheckoutReturnPath(
@@ -581,6 +614,87 @@ export async function createPropertyCheckoutSession(
       propertyId: completion.propertyId,
       coverageId: completion.coverageId,
     };
+  }
+
+  if (paymentMethod === "wallet") {
+    const settledAt = new Date();
+    const walletCreditsRequired = convertNgnKoboToWalletCredits(plan.priceNgnKobo);
+
+    try {
+      const walletSpend = await spendWalletCredits({
+        userId: input.authenticatedUser.userId,
+        amountCredits: walletCreditsRequired,
+        type: "registrationSpend",
+        description: `${plan.name} property registration paid with Catcher Security Credit.`,
+        referenceType: "property_checkout_wallet",
+        referenceId: checkoutSessionId,
+        metadata: {
+          planCode: input.planCode,
+          propertyName: input.name,
+        },
+        spentCounterField: "lifetimeSpentCredits",
+        consumedAt: settledAt,
+      });
+
+      const completion = await activatePropertyCheckoutSession(checkoutSessionId, {
+        settledAt,
+      });
+
+      if (completion.outcome !== "completed") {
+        await refundWalletSpend({
+          userId: input.authenticatedUser.userId,
+          type: "registrationRefund",
+          consumedLots: walletSpend.consumedLots,
+          description: `${plan.name} property checkout wallet refund.`,
+          referenceType: "property_checkout_wallet_refund",
+          referenceId: checkoutSessionId,
+          metadata: {
+            planCode: input.planCode,
+            propertyName: input.name,
+          },
+          refundedAt: settledAt,
+          decrementSpentCredits: true,
+        });
+
+        await prisma.propertyCheckoutSession.update({
+          where: { id: checkoutSessionId },
+          data: { status: "cancelled" },
+        }).catch(() => undefined);
+
+        throw new Error(completion.message);
+      }
+
+      const receipt = await prisma.billingReceipt.findUnique({
+        where: { coverageId: completion.coverageId },
+        select: { receiptNumber: true },
+      });
+
+      return {
+        mode: "wallet",
+        checkoutSessionId: completion.checkoutSessionId,
+        propertyId: completion.propertyId,
+        coverageId: completion.coverageId,
+        debitedCredits: walletCreditsRequired,
+        remainingWalletCredits: walletSpend.wallet.balanceCredits,
+        receiptNumber: receipt?.receiptNumber ?? null,
+      };
+    } catch (error) {
+      await prisma.propertyCheckoutSession.update({
+        where: { id: checkoutSessionId },
+        data: { status: "cancelled" },
+      }).catch(() => undefined);
+
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("insufficient available credits")
+      ) {
+        throw new Error(
+          `You need ${walletCreditsRequired} Catcher Security Credits to use wallet checkout for the ${plan.name} plan.`,
+        );
+      }
+
+      throw error;
+    }
   }
 
   const reference = buildPaystackReference(checkoutSessionId);
@@ -984,3 +1098,7 @@ export async function cancelPaystackCheckoutByReference(reference: string) {
 
   return true;
 }
+
+
+
+

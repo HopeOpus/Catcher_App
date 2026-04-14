@@ -12,7 +12,7 @@ const menuItems = [
     { name: 'Features', href: '/#features' },
     { name: 'How It Works', href: '/#how-it-works' },
     { name: 'Pricing', href: '/#pricing' },
-    { name: 'Stolen Items', href: '/stolen-items' },
+    { name: 'Search Registry', href: '/search-registry' },
 ]
 
 export const HeroHeader = () => {

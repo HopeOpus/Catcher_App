@@ -36,7 +36,7 @@ export function CTASection() {
             <Link href="/auth/signup">Create Free Account</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-            <Link href="/stolen-items">Browse Stolen Items</Link>
+            <Link href="/search-registry">Search Registry</Link>
           </Button>
           <Button asChild size="lg" variant="ghost" className="text-white hover:bg-white/10">
             <a href={supportLink}>Talk to Support</a>

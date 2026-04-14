@@ -226,6 +226,8 @@ export function AdminUsersTable({
       <AdminDataTable
         columns={columns}
         data={filteredUsers}
+        baseCount={users.length}
+        selectedCount={selectedUserIds.length}
         entityLabel="users"
         searchPlaceholder="Search users by name, email, or role"
         emptyStateTitle="No users found"
@@ -295,6 +297,19 @@ export function AdminUsersTable({
             <form
               action={bulkUpdateUserRoleAction}
               className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:flex-row xl:items-end xl:justify-between"
+              onSubmit={(event) => {
+                if (selectedUserIds.length === 0) {
+                  return;
+                }
+
+                const confirmed = window.confirm(
+                  `Apply this role change to ${selectedUserIds.length} selected user${selectedUserIds.length === 1 ? '' : 's'}?`,
+                );
+
+                if (!confirmed) {
+                  event.preventDefault();
+                }
+              }}
             >
               <input
                 type="hidden"
@@ -438,6 +453,15 @@ export function AdminUsersTable({
               <form
                 action={updateUserRoleAction}
                 className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-end"
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Save the access update for ${selectedUser.email}?`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input type="hidden" name="user_id" value={selectedUser.id} />
                 <input type="hidden" name="redirect_to" value="/admin/users" />

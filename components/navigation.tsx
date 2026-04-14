@@ -43,8 +43,8 @@ export function Navigation() {
             <Button
               asChild
               variant="ghost"
-              className="text-red-600 hover:bg-red-50 hover:text-red-700">
-              <Link href="/stolen-items">Stolen Items</Link>
+              className="text-[#36689e] hover:bg-[#36689e]/10 hover:text-[#0F2651]">
+              <Link href="/search-registry">Search Registry</Link>
             </Button>
 
             <SignedOut>
@@ -102,8 +102,8 @@ export function Navigation() {
                   <Link href="/#pricing">Pricing</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/stolen-items" className="font-medium text-red-600">
-                    Stolen Items
+                  <Link href="/search-registry" className="font-medium text-[#36689e]">
+                    Search Registry
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

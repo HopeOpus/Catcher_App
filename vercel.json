@@ -48,13 +48,6 @@
       ]
     }
   ],
-  "redirects": [
-    {
-      "source": "/admin",
-      "destination": "/dashboard",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/sitemap.xml",

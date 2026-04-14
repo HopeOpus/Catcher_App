@@ -61,8 +61,8 @@ export default function HeroSection() {
                             className="mt-8 max-w-2xl text-pretty text-lg text-slate-700">
                             Catcher helps you register valuables with photos and serial
                             numbers, keep a clean ownership record, and respond quickly if
-                            something goes missing. Buyers can also check reported items
-                            before purchase to avoid stolen goods.
+                            something goes missing. Buyers can also search the registry
+                            before purchase to check ownership details and theft status.
                         </TextEffect>
 
                         <AnimatedGroup
@@ -103,8 +103,8 @@ export default function HeroSection() {
                                 size="lg"
                                 variant="outline"
                                 className="rounded-xl border-[#36689e] px-5 text-base text-[#0F2651] hover:bg-[#36689e]/10">
-                                <Link href="/stolen-items">
-                                    <span className="text-nowrap">Browse Stolen Items</span>
+                                <Link href="/search-registry">
+                                    <span className="text-nowrap">Search Registry</span>
                                 </Link>
                             </Button>
                         </AnimatedGroup>

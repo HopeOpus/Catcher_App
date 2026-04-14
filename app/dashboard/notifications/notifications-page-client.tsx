@@ -9,9 +9,13 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  Gift,
   Search,
   ShieldAlert,
+  Trophy,
+  Users,
 } from 'lucide-react';
+import DashboardPageHeader from '@/components/dashboard/dashboard-page-header';
 import {
   archiveNotificationAction,
   markAllNotificationsReadAction,
@@ -27,7 +31,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-
 type NotificationStatusFilter = 'all' | 'unread' | 'read' | 'archived';
 type NotificationTypeFilter =
   | 'all'
@@ -37,7 +40,15 @@ type NotificationTypeFilter =
   | 'GraceStarted'
   | 'PropertyArchived'
   | 'PropertyRestored'
-  | 'StolenReportUpdated';
+  | 'StolenReportUpdated'
+  | 'ReferralSignupDetected'
+  | 'ReferralSuccessful'
+  | 'ReferralMilestoneReached'
+  | 'CreditsReceived'
+  | 'CreditsTransferred'
+  | 'CreditsExpiringSoon'
+  | 'CreditsExpired'
+  | 'AmbassadorBadgeEarned';
 
 export type DashboardNotificationItem = {
   id: string;
@@ -76,12 +87,24 @@ function getNotificationIcon(type: DashboardNotificationItem['type']) {
       return AlertCircle;
     case 'CoverageExpiring':
     case 'GraceStarted':
+    case 'CreditsExpiringSoon':
       return Clock3;
     case 'PropertyArchived':
     case 'PropertyRestored':
       return CheckCircle2;
     case 'StolenReportUpdated':
       return ShieldAlert;
+    case 'ReferralSignupDetected':
+    case 'ReferralSuccessful':
+      return Users;
+    case 'ReferralMilestoneReached':
+    case 'AmbassadorBadgeEarned':
+      return Trophy;
+    case 'CreditsReceived':
+    case 'CreditsTransferred':
+      return Gift;
+    case 'CreditsExpired':
+      return AlertCircle;
     default:
       return Bell;
   }
@@ -103,6 +126,22 @@ function getTypeLabel(type: DashboardNotificationItem['type']) {
       return 'Property Restored';
     case 'StolenReportUpdated':
       return 'Stolen Report Updated';
+    case 'ReferralSignupDetected':
+      return 'Referral Signup';
+    case 'ReferralSuccessful':
+      return 'Referral Qualified';
+    case 'ReferralMilestoneReached':
+      return 'Milestone Reached';
+    case 'CreditsReceived':
+      return 'Credits Received';
+    case 'CreditsTransferred':
+      return 'Credits Sent';
+    case 'CreditsExpiringSoon':
+      return 'Credits Expiring Soon';
+    case 'CreditsExpired':
+      return 'Credits Expired';
+    case 'AmbassadorBadgeEarned':
+      return 'Badge Earned';
     default:
       return type;
   }
@@ -112,15 +151,26 @@ function getTypeTone(type: DashboardNotificationItem['type']) {
   switch (type) {
     case 'PaymentReceived':
     case 'PropertyRestored':
+    case 'CreditsReceived':
       return 'bg-green-100 text-green-800';
     case 'PaymentFailed':
     case 'PropertyArchived':
+    case 'CreditsExpired':
       return 'bg-red-100 text-red-800';
     case 'CoverageExpiring':
     case 'GraceStarted':
+    case 'CreditsExpiringSoon':
       return 'bg-amber-100 text-amber-800';
     case 'StolenReportUpdated':
       return 'bg-blue-100 text-blue-800';
+    case 'ReferralSignupDetected':
+    case 'ReferralSuccessful':
+      return 'bg-violet-100 text-violet-800';
+    case 'ReferralMilestoneReached':
+    case 'AmbassadorBadgeEarned':
+      return 'bg-fuchsia-100 text-fuchsia-800';
+    case 'CreditsTransferred':
+      return 'bg-orange-100 text-orange-800';
     default:
       return 'bg-slate-100 text-slate-700';
   }
@@ -202,26 +252,24 @@ export default function NotificationsPageClient({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#0F2651]">Notifications</h1>
-          <p className="mt-2 max-w-3xl text-gray-600">
-            Review payment confirmations, subscription alerts, archive updates,
-            and stolen-report activity in one place.
-          </p>
-        </div>
-        <form action={markAllNotificationsReadAction}>
-          <Button
-            type="submit"
-            variant="outline"
-            className="border-[#36689e] text-[#0F2651]"
-            disabled={unreadCount === 0}
-          >
-            <CheckCheck className="mr-2 h-4 w-4" />
-            Mark All Read
-          </Button>
-        </form>
-      </div>
+      <DashboardPageHeader
+        eyebrow="Activity"
+        title="Notifications"
+        description="Review payment confirmations, wallet activity, referral progress, archive updates, and stolen-report activity in one place."
+        actions={
+          <form action={markAllNotificationsReadAction}>
+            <Button
+              type="submit"
+              variant="outline"
+              className="border-[#36689e] text-[#0F2651]"
+              disabled={unreadCount === 0}
+            >
+              <CheckCheck className="mr-2 h-4 w-4" />
+              Mark All Read
+            </Button>
+          </form>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {summaryCards.map((summary) => (
@@ -292,9 +340,24 @@ export default function NotificationsPageClient({
               No notifications found
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">
-              You do not have any matching alerts yet. As your property plans
-              and reports change, they will appear here.
+              {notifications.length === 0
+                ? 'You do not have any alerts yet. As your property plans and reports change, they will appear here.'
+                : 'No notifications match your current search or filter selection.'}
             </p>
+            {notifications.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-5 border-[#36689e] text-[#0F2651]"
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setTypeFilter('all');
+                }}
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : (
@@ -406,3 +469,5 @@ export default function NotificationsPageClient({
     </div>
   );
 }
+
+

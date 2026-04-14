@@ -32,7 +32,7 @@ export default function Footer() {
             />
             <p className="mt-4 max-w-md text-slate-400">
               Catcher helps you register valuable property, report stolen items, and
-              check suspicious goods before purchase.
+              search the public registry before purchase.
             </p>
             <p className="mt-4 text-sm text-slate-400">
               Support:{' '}
@@ -60,8 +60,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/stolen-items" className="transition-colors hover:text-white">
-                  Stolen Items
+                <Link href="/search-registry" className="transition-colors hover:text-white">
+                  Search Registry
                 </Link>
               </li>
             </ul>

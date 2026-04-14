@@ -6,6 +6,7 @@ export type AuthenticatedAppUser = {
   email: string;
   name: string;
   candidateEmails: string[];
+  emailVerified: boolean;
 };
 
 type UserSyncClient = Pick<
@@ -164,6 +165,12 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
   const email =
     candidateEmails[0] ??
     `${userId}@catcher.local`;
+  const emailVerified =
+    clerkUser?.emailAddresses?.some(
+      (emailAddress) =>
+        emailAddress.verification?.status === "verified" &&
+        candidateEmails.includes(emailAddress.emailAddress.trim().toLowerCase()),
+    ) ?? false;
   const name =
     clerkUser?.fullName?.trim() ||
     getStringClaim(claims, "name", "full_name") ||
@@ -182,6 +189,7 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     email,
     name,
     candidateEmails,
+    emailVerified,
   };
 }
 
@@ -312,3 +320,6 @@ export async function syncAuthenticatedAppUserRecord(
 
   return authenticatedUser;
 }
+
+
+

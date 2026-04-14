@@ -8,7 +8,10 @@ import {
   getAuthenticatedAppUser,
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
-import { createPropertyCheckoutSession } from "@/lib/property-checkout";
+import {
+  createPropertyCheckoutSession,
+  type PropertyCheckoutPaymentMethod,
+} from "@/lib/property-checkout";
 import { parseSubmittedPhotoUrls } from "@/lib/property-payload";
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +20,10 @@ export const runtime = "nodejs";
 function getRequestBaseUrl(request: Request): string {
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
+}
+
+function isPropertyCheckoutPaymentMethod(value: unknown): value is PropertyCheckoutPaymentMethod {
+  return value === "cash" || value === "wallet";
 }
 
 export async function POST(request: Request) {
@@ -36,6 +43,7 @@ export async function POST(request: Request) {
         ? body.description.trim()
         : null;
     const planCode = body.plan_code;
+    const paymentMethod = body.payment_method;
     const status = body.status;
     const type = body.type;
 
@@ -52,6 +60,13 @@ export async function POST(request: Request) {
     if (!isPropertyPlanCode(planCode)) {
       return NextResponse.json(
         { error: "plan_code must be one of free, monthly, or yearly." },
+        { status: 400 },
+      );
+    }
+
+    if (paymentMethod !== undefined && !isPropertyCheckoutPaymentMethod(paymentMethod)) {
+      return NextResponse.json(
+        { error: "payment_method must be either cash or wallet." },
         { status: 400 },
       );
     }
@@ -91,6 +106,7 @@ export async function POST(request: Request) {
       status: status ?? "Active",
       photoUrls: submittedPhotoUrls.urls,
       planCode,
+      paymentMethod,
       dateRegistered: body.date_registered
         ? new Date(body.date_registered)
         : undefined,
@@ -105,7 +121,12 @@ export async function POST(request: Request) {
       error instanceof Error
         ? error.message
         : "Failed to start property checkout.";
-    const statusCode = errorMessage.includes("free property upload") ? 400 : 500;
+    const lowerErrorMessage = errorMessage.toLowerCase();
+    const statusCode =
+      lowerErrorMessage.includes("free property upload") ||
+      lowerErrorMessage.includes("catcher security credits")
+        ? 400
+        : 500;
 
     return NextResponse.json(
       {
