@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const sessionToken = formData.get('sessionToken');
     const authenticatedUser =
-      (await getAuthenticatedAppUser()) ??
+      (await getAuthenticatedAppUser(request)) ??
       (await getAuthenticatedAppUserFromSessionToken(
         typeof sessionToken === 'string' ? sessionToken : null,
       ));

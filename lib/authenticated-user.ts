@@ -1,5 +1,5 @@
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import { headers } from "next/headers";
-import { verifyToken } from "@clerk/backend";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
 
@@ -132,26 +132,12 @@ function getStringClaim(
   return null;
 }
 
-export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | null> {
-  const { userId, sessionClaims } = await auth();
-
-  if (!userId) {
-    const requestHeaders = await headers();
-    const authorizationHeader = requestHeaders.get("authorization");
-    const bearerToken =
-      authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
-
-    if (!bearerToken) {
-      return null;
-    }
-
-    return getAuthenticatedAppUserFromSessionToken(bearerToken);
-  }
-
-  const claims =
-    sessionClaims && typeof sessionClaims === "object"
-      ? (sessionClaims as Record<string, unknown>)
-      : {};
+async function buildAuthenticatedAppUserFromResolvedIdentity(options: {
+  userId: string;
+  claims?: Record<string, unknown>;
+}): Promise<AuthenticatedAppUser> {
+  const { userId } = options;
+  const claims = options.claims ?? {};
 
   let clerkUser = null;
 
@@ -159,18 +145,18 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     clerkUser = await currentUser();
   } catch (error) {
     console.error(
-      "Failed to load Clerk currentUser; falling back to auth session claims.",
+      "Failed to load Clerk currentUser; falling back to Clerk API lookup.",
       error,
     );
   }
 
-  if (!clerkUser) {
+  if (!clerkUser || clerkUser.id !== userId) {
     try {
       const client = await clerkClient();
       clerkUser = await client.users.getUser(userId);
     } catch (error) {
       console.error(
-        "Failed to load Clerk user by ID; continuing with auth session claims only.",
+        "Failed to load Clerk user by ID; continuing with available identity claims only.",
         error,
       );
     }
@@ -187,10 +173,7 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     ...(clerkUser?.emailAddresses?.map((emailAddress) => emailAddress.emailAddress) ?? []),
     getStringClaim(claims, "email", "email_address"),
   ]);
-
-  const email =
-    candidateEmails[0] ??
-    `${userId}@catcher.local`;
+  const email = candidateEmails[0] ?? `${userId}@catcher.local`;
   const emailVerified =
     clerkUser?.emailAddresses?.some(
       (emailAddress) =>
@@ -219,6 +202,79 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
   };
 }
 
+export async function getAuthenticatedAppUser(
+  request?: Request,
+): Promise<AuthenticatedAppUser | null> {
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ??
+    requestHeaders.get("host") ??
+    "localhost";
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    "https";
+  const requestForAuth =
+    request ??
+    new Request(`${protocol}://${host}`, {
+      headers: requestHeaders,
+    });
+
+  if (requestForAuth) {
+    try {
+      const requestClerkClient = createClerkClient({
+        secretKey: process.env.CLERK_SECRET_KEY,
+        publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        jwtKey: process.env.CLERK_JWT_KEY,
+      });
+      const requestState = await requestClerkClient.authenticateRequest(requestForAuth, {
+        acceptsToken: "session_token",
+      });
+
+      if (requestState.isSignedIn) {
+        const authObject = requestState.toAuth();
+
+        if (authObject.userId) {
+          const authClaims =
+            authObject.sessionClaims && typeof authObject.sessionClaims === "object"
+              ? (authObject.sessionClaims as Record<string, unknown>)
+              : {};
+
+          return buildAuthenticatedAppUserFromResolvedIdentity({
+            userId: authObject.userId,
+            claims: authClaims,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to authenticate request with Clerk request authenticator.", error);
+    }
+  }
+
+  const { userId, sessionClaims } = await auth();
+
+  if (!userId) {
+    const authorizationHeader = requestHeaders.get("authorization");
+    const bearerToken =
+      authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
+
+    if (!bearerToken) {
+      return null;
+    }
+
+    return getAuthenticatedAppUserFromSessionToken(bearerToken);
+  }
+
+  const claims =
+    sessionClaims && typeof sessionClaims === "object"
+      ? (sessionClaims as Record<string, unknown>)
+      : {};
+
+  return buildAuthenticatedAppUserFromResolvedIdentity({
+    userId,
+    claims,
+  });
+}
+
 export async function getAuthenticatedAppUserFromSessionToken(
   sessionToken: string | null | undefined,
 ): Promise<AuthenticatedAppUser | null> {
@@ -242,57 +298,10 @@ export async function getAuthenticatedAppUserFromSessionToken(
       return null;
     }
 
-    let clerkUser = null;
-
-    try {
-      const client = await clerkClient();
-      clerkUser = await client.users.getUser(userId);
-    } catch (error) {
-      console.error(
-        "Failed to load Clerk user from verified session token; falling back to token claims.",
-        error,
-      );
-    }
-
-    const primaryClerkEmail =
-      clerkUser?.emailAddresses?.find(
-        (emailAddress) => emailAddress.id === clerkUser?.primaryEmailAddressId,
-      )?.emailAddress ??
-      clerkUser?.emailAddresses?.[0]?.emailAddress ??
-      null;
-    const candidateEmails = collectCandidateEmails([
-      primaryClerkEmail,
-      ...(clerkUser?.emailAddresses?.map((emailAddress) => emailAddress.emailAddress) ?? []),
-      getStringClaim(claims as Record<string, unknown>, "email", "email_address"),
-    ]);
-    const email = candidateEmails[0] ?? `${userId}@catcher.local`;
-    const emailVerified =
-      clerkUser?.emailAddresses?.some(
-        (emailAddress) =>
-          emailAddress.verification?.status === "verified" &&
-          candidateEmails.includes(emailAddress.emailAddress.trim().toLowerCase()),
-      ) ??
-      false;
-    const name =
-      clerkUser?.fullName?.trim() ||
-      getStringClaim(claims as Record<string, unknown>, "name", "full_name") ||
-      [
-        clerkUser?.firstName ?? getStringClaim(claims as Record<string, unknown>, "given_name", "first_name"),
-        clerkUser?.lastName ?? getStringClaim(claims as Record<string, unknown>, "family_name", "last_name"),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim() ||
-      email.split("@")[0] ||
-      "Catcher User";
-
-    return {
+    return buildAuthenticatedAppUserFromResolvedIdentity({
       userId,
-      email,
-      name,
-      candidateEmails,
-      emailVerified,
-    };
+      claims: claims as Record<string, unknown>,
+    });
   } catch (error) {
     console.error("Failed to verify Clerk session token for upload request.", error);
     return null;
