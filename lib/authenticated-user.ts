@@ -105,9 +105,7 @@ export async function getAuthenticatedUserId(): Promise<string | null> {
   }
 
   const requestHeaders = await headers();
-  const authorizationHeader = requestHeaders.get("authorization");
-  const bearerToken =
-    authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
+  const bearerToken = getBearerTokenFromHeaders(requestHeaders);
 
   if (!bearerToken) {
     return null;
@@ -138,6 +136,15 @@ function getClerkPublishableKey() {
     process.env.CLERK_PUBLISHABLE_KEY ??
     ""
   );
+}
+
+function getBearerTokenFromHeaders(headersLike: Headers | null | undefined) {
+  if (!headersLike) {
+    return null;
+  }
+
+  const authorizationHeader = headersLike.get("authorization");
+  return authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
 }
 
 async function buildAuthenticatedAppUserFromResolvedIdentity(options: {
@@ -226,6 +233,18 @@ export async function getAuthenticatedAppUser(
     new Request(`${protocol}://${host}`, {
       headers: requestHeaders,
     });
+  const bearerToken =
+    getBearerTokenFromHeaders(request?.headers) ??
+    getBearerTokenFromHeaders(requestHeaders);
+
+  if (bearerToken) {
+    const tokenAuthenticatedUser =
+      await getAuthenticatedAppUserFromSessionToken(bearerToken);
+
+    if (tokenAuthenticatedUser) {
+      return tokenAuthenticatedUser;
+    }
+  }
 
   if (requestForAuth) {
     try {
@@ -261,10 +280,6 @@ export async function getAuthenticatedAppUser(
   const { userId, sessionClaims } = await auth({ acceptsToken: "session_token" });
 
   if (!userId) {
-    const authorizationHeader = requestHeaders.get("authorization");
-    const bearerToken =
-      authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
-
     if (!bearerToken) {
       return null;
     }
