@@ -8,8 +8,7 @@ import { buildWalletSummary } from "@/lib/wallet";
 
 export async function GET(request: Request) {
   try {
-    void request;
-    const authenticatedUser = await getAuthenticatedAppUser();
+    const authenticatedUser = await getAuthenticatedAppUser(request);
 
     if (!authenticatedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

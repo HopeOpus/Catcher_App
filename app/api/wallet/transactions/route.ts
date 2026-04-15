@@ -17,7 +17,7 @@ function parseNumberParam(value: string | null, fallback: number) {
 
 export async function GET(request: Request) {
   try {
-    const authenticatedUser = await getAuthenticatedAppUser();
+    const authenticatedUser = await getAuthenticatedAppUser(request);
 
     if (!authenticatedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

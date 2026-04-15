@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const bearerAuthenticatedUser = await getAuthenticatedAppUser();
+    const bearerAuthenticatedUser = await getAuthenticatedAppUser(request);
     const formData = await request.formData();
     const sessionToken = formData.get('sessionToken');
     const authenticatedUser =
