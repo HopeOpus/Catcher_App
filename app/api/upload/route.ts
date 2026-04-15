@@ -19,10 +19,11 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
+    const bearerAuthenticatedUser = await getAuthenticatedAppUser();
     const formData = await request.formData();
     const sessionToken = formData.get('sessionToken');
     const authenticatedUser =
-      (await getAuthenticatedAppUser(request)) ??
+      bearerAuthenticatedUser ??
       (await getAuthenticatedAppUserFromSessionToken(
         typeof sessionToken === 'string' ? sessionToken : null,
       ));
