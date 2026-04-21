@@ -147,8 +147,8 @@ const propertyCoverages = [
     userId: user.id,
     planCode: "yearly",
     planName: "Yearly Property Coverage",
-    priceNgnKobo: 500000,
-    currency: "NGN",
+    priceNgnKobo: 800,
+    currency: "USD",
     status: "active",
     startsAt: new Date("2026-01-15T00:00:00.000Z"),
     expiresAt: new Date("2027-01-15T00:00:00.000Z"),
@@ -161,8 +161,8 @@ const propertyCoverages = [
     userId: user.id,
     planCode: "monthly",
     planName: "Monthly Property Coverage",
-    priceNgnKobo: 80000,
-    currency: "NGN",
+    priceNgnKobo: 200,
+    currency: "USD",
     status: "active",
     startsAt: new Date("2026-03-10T00:00:00.000Z"),
     expiresAt: new Date("2026-04-09T00:00:00.000Z"),
@@ -176,7 +176,7 @@ const propertyCoverages = [
     planCode: "free",
     planName: "Free Property Coverage",
     priceNgnKobo: 0,
-    currency: "NGN",
+    currency: "USD",
     status: "active",
     startsAt: new Date("2026-01-05T00:00:00.000Z"),
     expiresAt: null,
@@ -297,3 +297,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

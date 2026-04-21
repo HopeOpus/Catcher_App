@@ -161,7 +161,7 @@ export async function initializePaystackTransaction(
       amount: payload.amountKobo.toString(),
       email: payload.email,
       reference: payload.reference,
-      currency: "NGN",
+      currency: "USD",
       callback_url: payload.callbackUrl,
       metadata: JSON.stringify(payload.metadata),
     }),

@@ -65,12 +65,14 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/auth/signup" className="transition-colors hover:text-white">
+                <Link href="/catcher-security-credit" className="transition-colors hover:text-white">
                   Wallet/Referral
                 </Link>
               </li>
               <li>
-                <span className="cursor-default text-slate-400">Franchise</span>
+                <Link href="/#catcher-global-franchise" className="transition-colors hover:text-white">
+                  Franchise
+                </Link>
               </li>
             </ul>
           </div>

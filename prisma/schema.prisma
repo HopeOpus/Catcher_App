@@ -68,6 +68,7 @@ enum PropertyCoverageStatus {
 }
 
 enum PaymentCurrency {
+  USD
   NGN
 
   @@map("payment_currency")
@@ -347,7 +348,7 @@ model PropertyCoverage {
   planCode                 PropertyPlanCode       @map("plan_code")
   planName                 String                 @map("plan_name") @db.VarChar(100)
   priceNgnKobo             Int                    @map("price_ngn_kobo")
-  currency                 PaymentCurrency        @default(NGN)
+  currency                 PaymentCurrency        @default(USD)
   status                   PropertyCoverageStatus @default(active)
   startsAt                 DateTime               @map("starts_at") @db.Timestamptz
   expiresAt                DateTime?              @map("expires_at") @db.Timestamptz
@@ -398,7 +399,7 @@ model PropertyCheckoutSession {
   planCode                 PropertyPlanCode              @map("plan_code")
   planName                 String                        @map("plan_name") @db.VarChar(100)
   priceNgnKobo             Int                           @map("price_ngn_kobo")
-  currency                 PaymentCurrency               @default(NGN)
+  currency                 PaymentCurrency               @default(USD)
   status                   PropertyCheckoutSessionStatus @default(draft)
   paystackReference        String?                       @unique @map("paystack_reference") @db.VarChar(255)
   paystackCustomerCode     String?                       @map("paystack_customer_code") @db.VarChar(255)
@@ -620,7 +621,7 @@ model BillingReceipt {
   planCode         PropertyPlanCode @map("plan_code")
   planName         String          @map("plan_name") @db.VarChar(100)
   amountKobo       Int             @map("amount_kobo")
-  currency         PaymentCurrency @default(NGN)
+  currency         PaymentCurrency @default(USD)
   startsAt         DateTime        @map("starts_at") @db.Timestamptz
   expiresAt        DateTime?       @map("expires_at") @db.Timestamptz
   issuedAt         DateTime        @default(now()) @map("issued_at") @db.Timestamptz

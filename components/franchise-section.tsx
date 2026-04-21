@@ -2,7 +2,10 @@ import Image from "next/image";
 
 export function FranchiseSection() {
   return (
-    <section className="relative overflow-hidden bg-[linear-gradient(135deg,#0b1c3f_0%,#12386d_45%,#1b4f8f_100%)] py-20 text-white sm:py-24">
+    <section
+      id="catcher-global-franchise"
+      className="relative overflow-hidden bg-[linear-gradient(135deg,#0b1c3f_0%,#12386d_45%,#1b4f8f_100%)] py-20 text-white sm:py-24"
+    >
       <div
         aria-hidden
         className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(120,186,255,0.18),transparent_28%)]"

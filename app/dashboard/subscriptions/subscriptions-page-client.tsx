@@ -54,13 +54,6 @@ import {
 } from '@/components/ui/table';
 import type { PropertyPlanCodeValue } from '@/lib/catcher-domain';
 import {
-  formatApproxUsdFromNgnKobo,
-  formatNgnPerUsd,
-  formatRateDate,
-  type BillingDisplayCurrency,
-  type CurrencyRateSnapshot,
-} from '@/lib/currency-display';
-import {
   formatNgnFromKobo,
   type PropertyPlanDefinition,
 } from '@/lib/property-plans';
@@ -94,19 +87,10 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function formatDisplayAmount(options: {
-  amountNgnKobo: number;
-  displayCurrency: BillingDisplayCurrency;
-  usdRateSnapshot: CurrencyRateSnapshot | null;
-}) {
-  const { amountNgnKobo, displayCurrency, usdRateSnapshot } = options;
+function formatDisplayAmount(amountNgnKobo: number) {
 
   if (amountNgnKobo === 0) {
     return 'Free';
-  }
-
-  if (displayCurrency === 'USD' && usdRateSnapshot) {
-    return formatApproxUsdFromNgnKobo(amountNgnKobo, usdRateSnapshot);
   }
 
   return formatNgnFromKobo(amountNgnKobo);
@@ -296,7 +280,6 @@ type SubscriptionsPageClientProps = {
   summary: PropertyPlanDashboardSummary;
   hasUsedFreePlan: boolean;
   planDefinitions: PropertyPlanDefinition[];
-  usdRateSnapshot: CurrencyRateSnapshot | null;
 };
 
 export default function SubscriptionsPageClient({
@@ -305,19 +288,14 @@ export default function SubscriptionsPageClient({
   summary,
   hasUsedFreePlan,
   planDefinitions,
-  usdRateSnapshot,
 }: SubscriptionsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkoutState = searchParams.get('checkout');
   const checkoutReference = searchParams.get('reference');
   const focusedPropertyId = searchParams.get('property');
-  const defaultDisplayCurrency: BillingDisplayCurrency = usdRateSnapshot ? 'USD' : 'NGN';
   const [selectedPlanCodesByPropertyId, setSelectedPlanCodesByPropertyId] = useState<
     Record<string, PropertyPlanCodeValue>
-  >({});
-  const [displayCurrenciesByPropertyId, setDisplayCurrenciesByPropertyId] = useState<
-    Record<string, BillingDisplayCurrency>
   >({});
   const [submittingPropertyId, setSubmittingPropertyId] = useState<string | null>(null);
   const [pageNotice, setPageNotice] = useState<PageNotice | null>(null);
@@ -340,9 +318,6 @@ export default function SubscriptionsPageClient({
       planDefinitions.find((plan) => plan.code === selectedPlanCode) ?? planDefinitions[0]
     );
   };
-
-  const getDisplayCurrencyForProperty = (propertyId: string) =>
-    displayCurrenciesByPropertyId[propertyId] ?? defaultDisplayCurrency;
 
   const visibleProperties = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -501,26 +476,13 @@ export default function SubscriptionsPageClient({
         header: 'Amount Paid',
         accessorFn: (property) => property.currentCoverage?.priceNgnKobo ?? 0,
         cell: ({ row }) => {
-          const displayCurrency =
-            displayCurrenciesByPropertyId[row.original.propertyId] ?? defaultDisplayCurrency;
           const amountLabel = row.original.currentCoverage
-            ? formatDisplayAmount({
-                amountNgnKobo: row.original.currentCoverage.priceNgnKobo,
-                displayCurrency,
-                usdRateSnapshot,
-              })
+            ? formatDisplayAmount(row.original.currentCoverage.priceNgnKobo)
             : 'Not billed yet';
 
           return (
             <div className="space-y-1">
               <p className="text-sm font-medium text-[#0F2651]">{amountLabel}</p>
-              {row.original.currentCoverage &&
-              row.original.currentCoverage.priceNgnKobo > 0 &&
-              displayCurrency === 'USD' ? (
-                <p className="text-xs text-slate-500">
-                  {formatNgnFromKobo(row.original.currentCoverage.priceNgnKobo)} actual
-                </p>
-              ) : null}
             </div>
           );
         },
@@ -592,7 +554,7 @@ export default function SubscriptionsPageClient({
         ),
       },
     ],
-    [defaultDisplayCurrency, displayCurrenciesByPropertyId, usdRateSnapshot],
+    [],
   );
 
   const subscriptionsTable = useReactTable({
@@ -624,9 +586,6 @@ export default function SubscriptionsPageClient({
   const paginatedPropertyRows = subscriptionsTable.getRowModel().rows;
   const paginatedPropertyItems = paginatedPropertyRows.map((row) => row.original);
   const selectedPlan = selectedProperty ? getSelectedPlanForProperty(selectedProperty) : null;
-  const selectedDisplayCurrency = selectedProperty
-    ? getDisplayCurrencyForProperty(selectedProperty.propertyId)
-    : defaultDisplayCurrency;
   const selectedActionState =
     selectedProperty && selectedPlan
       ? getPrimaryActionState({
@@ -950,24 +909,11 @@ export default function SubscriptionsPageClient({
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
-            {usdRateSnapshot ? (
-              <>
-                <p className="font-semibold text-[#0F2651]">Approximate USD display</p>
-                <p className="mt-2">
-                  Each property card has its own USD or NGN toggle. The USD amount uses
-                  the cached Frankfurter daily rate from {formatRateDate(usdRateSnapshot.rateDate)}.
-                </p>
-                <p className="mt-2">1 USD ≈ {formatNgnPerUsd(usdRateSnapshot)}.</p>
-              </>
-            ) : (
-              <>
-                <p className="font-semibold text-[#0F2651]">Approximate USD display</p>
-                <p className="mt-2">
-                  Live USD conversion is temporarily unavailable, so property pricing is
-                  shown in NGN only for now.
-                </p>
-              </>
-            )}
+            <p className="font-semibold text-[#0F2651]">Global pricing</p>
+            <p className="mt-2">
+              Every customer pays the same fixed pricing: $1 monthly or $5 yearly for
+              each property. The free plan remains available once per account.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -1120,13 +1066,8 @@ export default function SubscriptionsPageClient({
 
           <div className="space-y-4 md:hidden">
             {paginatedPropertyItems.map((property) => {
-              const displayCurrency = getDisplayCurrencyForProperty(property.propertyId);
               const currentAmount = property.currentCoverage
-                ? formatDisplayAmount({
-                    amountNgnKobo: property.currentCoverage.priceNgnKobo,
-                    displayCurrency,
-                    usdRateSnapshot,
-                  })
+                ? formatDisplayAmount(property.currentCoverage.priceNgnKobo)
                 : 'Not billed yet';
 
               return (
@@ -1331,20 +1272,9 @@ export default function SubscriptionsPageClient({
                     </p>
                     <p className="mt-1 text-sm font-medium text-[#0F2651]">
                       {selectedProperty.currentCoverage
-                        ? formatDisplayAmount({
-                            amountNgnKobo: selectedProperty.currentCoverage.priceNgnKobo,
-                            displayCurrency: selectedDisplayCurrency,
-                            usdRateSnapshot,
-                          })
+                        ? formatDisplayAmount(selectedProperty.currentCoverage.priceNgnKobo)
                         : 'Not billed yet'}
                     </p>
-                    {selectedProperty.currentCoverage &&
-                    selectedProperty.currentCoverage.priceNgnKobo > 0 &&
-                    selectedDisplayCurrency === 'USD' ? (
-                      <p className="mt-1 text-xs text-slate-500">
-                        Actual charge: {formatNgnFromKobo(selectedProperty.currentCoverage.priceNgnKobo)}
-                      </p>
-                    ) : null}
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1401,44 +1331,11 @@ export default function SubscriptionsPageClient({
                         .
                       </p>
                     </div>
-                    <div className="flex flex-col items-start gap-2 lg:items-end">
-                      <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDisplayCurrenciesByPropertyId((current) => ({
-                              ...current,
-                              [selectedProperty.propertyId]: 'USD',
-                            }))
-                          }
-                          disabled={!usdRateSnapshot}
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                            selectedDisplayCurrency === 'USD'
-                              ? 'bg-[#0F2651] text-white'
-                              : 'text-slate-600 hover:text-[#0F2651]'
-                          } ${!usdRateSnapshot ? 'cursor-not-allowed opacity-50' : ''}`}
-                        >
-                          USD
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDisplayCurrenciesByPropertyId((current) => ({
-                              ...current,
-                              [selectedProperty.propertyId]: 'NGN',
-                            }))
-                          }
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                            selectedDisplayCurrency === 'NGN'
-                              ? 'bg-[#0F2651] text-white'
-                              : 'text-slate-600 hover:text-[#0F2651]'
-                          }`}
-                        >
-                          NGN
-                        </button>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Display only. Checkout is always charged in NGN.
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 lg:max-w-xs">
+                      <p className="font-semibold text-[#0F2651]">Charged in USD</p>
+                      <p className="mt-1">
+                        Monthly registrations are billed at $1 and yearly registrations
+                        are billed at $5 for every property, wherever the payment is made.
                       </p>
                     </div>
                   </div>
@@ -1474,20 +1371,11 @@ export default function SubscriptionsPageClient({
                                 {plan.name}
                               </p>
                               <p className="mt-1 text-sm font-medium text-slate-700">
-                                {formatDisplayAmount({
-                                  amountNgnKobo: plan.priceNgnKobo,
-                                  displayCurrency: selectedDisplayCurrency,
-                                  usdRateSnapshot,
-                                })}
+                                {formatDisplayAmount(plan.priceNgnKobo)}
                                 {plan.durationDays
                                   ? ` / ${plan.durationDays === 30 ? '30 days' : '365 days'}`
                                   : ''}
                               </p>
-                              {plan.priceNgnKobo > 0 && selectedDisplayCurrency === 'USD' ? (
-                                <p className="mt-1 text-xs text-slate-500">
-                                  Actual charge: {formatNgnFromKobo(plan.priceNgnKobo)}
-                                </p>
-                              ) : null}
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               {plan.badge ? (
@@ -1518,14 +1406,6 @@ export default function SubscriptionsPageClient({
                       );
                     })}
                   </div>
-
-                  {usdRateSnapshot && selectedDisplayCurrency === 'USD' ? (
-                    <p className="mt-4 text-xs text-slate-500">
-                      Approximate USD display uses the cached rate from{' '}
-                      {formatRateDate(usdRateSnapshot.rateDate)}. 1 USD ≈{' '}
-                      {formatNgnPerUsd(usdRateSnapshot)}.
-                    </p>
-                  ) : null}
                 </div>
 
                 {selectedProperty.upcomingCoverage ? (

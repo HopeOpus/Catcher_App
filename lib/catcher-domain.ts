@@ -88,7 +88,7 @@ export const PROPERTY_CHECKOUT_SESSION_STATUSES = [
 export type PropertyCheckoutSessionStatusValue =
   (typeof PROPERTY_CHECKOUT_SESSION_STATUSES)[number];
 
-export const PAYMENT_CURRENCIES = ["NGN"] as const;
+export const PAYMENT_CURRENCIES = ["USD", "NGN"] as const;
 
 export type PaymentCurrencyValue = (typeof PAYMENT_CURRENCIES)[number];
 
