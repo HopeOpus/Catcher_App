@@ -38,8 +38,8 @@ export function PricingSection() {
       popular: false,
     },
     {
-      name: '$1 Monthly',
-      price: '$1',
+      name: '$2 Monthly',
+      price: '$2',
       period: 'Monthly',
       description: 'Monthly protection with a free digital identity certificate.',
       features: [
@@ -55,8 +55,8 @@ export function PricingSection() {
       popular: false,
     },
     {
-      name: '$5 Annually',
-      price: '$5',
+      name: '$8 Annually',
+      price: '$8',
       period: 'Annually',
       description: 'Recommended annual protection with a free global identity certificate.',
       features: [

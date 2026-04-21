@@ -1334,8 +1334,8 @@ export default function SubscriptionsPageClient({
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 lg:max-w-xs">
                       <p className="font-semibold text-[#0F2651]">Charged in USD</p>
                       <p className="mt-1">
-                        Monthly registrations are billed at $1 and yearly registrations
-                        are billed at $5 for every property, wherever the payment is made.
+                        Monthly registrations are billed at $2 and yearly registrations
+                        are billed at $8 for every property, wherever the payment is made.
                       </p>
                     </div>
                   </div>
