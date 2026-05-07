@@ -1,7 +1,7 @@
 import type { PropertyPlanCodeValue } from "@/lib/catcher-domain";
 
-export const MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 200;
-export const YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 800;
+export const MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 80_000;
+export const YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 500_000;
 export const PROPERTY_PLAN_GRACE_PERIOD_DAYS = 7;
 export const FREE_PROPERTY_PLAN_LIFETIME_LIMIT = 1;
 
@@ -63,11 +63,10 @@ export function getPropertyPlanDefinition(
 }
 
 export function formatNgnFromKobo(amountKobo: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-NG", {
     style: "currency",
-    currency: "USD",
-    minimumFractionDigits: amountKobo >= 10000 ? 0 : 2,
-    maximumFractionDigits: amountKobo >= 10000 ? 0 : 2,
+    currency: "NGN",
+    maximumFractionDigits: 0,
   }).format(amountKobo / 100);
 }
 

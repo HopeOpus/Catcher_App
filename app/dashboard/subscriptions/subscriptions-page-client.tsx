@@ -1332,10 +1332,10 @@ export default function SubscriptionsPageClient({
                       </p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 lg:max-w-xs">
-                      <p className="font-semibold text-[#0F2651]">Charged in USD</p>
+                      <p className="font-semibold text-[#0F2651]">Charged in NGN</p>
                       <p className="mt-1">
-                        Monthly registrations are billed at $2 and yearly registrations
-                        are billed at $8 for every property, wherever the payment is made.
+                        Monthly registrations are billed at ₦800 and yearly registrations
+                        are billed at ₦5,000 for every property.
                       </p>
                     </div>
                   </div>

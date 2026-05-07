@@ -38,8 +38,8 @@ export function PricingSection() {
       popular: false,
     },
     {
-      name: '$2 Monthly',
-      price: '$2',
+      name: '₦800 Monthly',
+      price: '₦800',
       period: 'Monthly',
       description: 'Monthly protection with a free digital identity certificate.',
       features: [
@@ -55,8 +55,8 @@ export function PricingSection() {
       popular: false,
     },
     {
-      name: '$8 Annually',
-      price: '$8',
+      name: '₦5,000 Annually',
+      price: '₦5,000',
       period: 'Annually',
       description: 'Recommended annual protection with a free global identity certificate.',
       features: [

@@ -594,7 +594,7 @@ export async function createPropertyCheckoutSession(
       planCode: input.planCode,
       planName: plan.name,
       priceNgnKobo: plan.priceNgnKobo,
-      currency: "USD",
+      currency: "NGN",
       status: "draft",
     },
   });
@@ -736,7 +736,7 @@ export async function createPropertyCheckoutSession(
       userId: input.authenticatedUser.userId,
       propertyId: input.existingPropertyId ?? null,
       amountKobo: plan.priceNgnKobo,
-      currency: "USD",
+      currency: "NGN",
       transactionStatus: "initialized",
       processingOutcome: "authorization_url_received",
       payload: {
@@ -778,7 +778,7 @@ export async function createPropertyCheckoutSession(
       userId: input.authenticatedUser.userId,
       propertyId: input.existingPropertyId ?? null,
       amountKobo: plan.priceNgnKobo,
-      currency: "USD",
+      currency: "NGN",
       transactionStatus: "failed",
       processingOutcome: "initialize_failed",
       errorMessage:
