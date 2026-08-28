@@ -61,8 +61,8 @@ export default function HeroSection() {
                             className="mt-8 max-w-2xl text-pretty text-lg text-slate-700">
                             Catcher helps you register valuables with photos and serial
                             numbers, keep a clean ownership record, and respond quickly if
-                            something goes missing. Buyers can also check reported items
-                            before purchase to avoid stolen goods.
+                            something goes missing. Buyers can also search the registry
+                            before purchase to check ownership details and theft status.
                         </TextEffect>
 
                         <AnimatedGroup
@@ -102,9 +102,9 @@ export default function HeroSection() {
                                 asChild
                                 size="lg"
                                 variant="outline"
-                                className="rounded-xl gap-6 border-[#36689e] px-5 text-base text-[#0F2651] hover:bg-[#36689e]/10 sm:ml-6">
-                                <Link href="/stolen-items">
-                                    <span className="text-nowrap">Browse Stolen Items</span>
+                                className="rounded-xl border-[#36689e] px-5 text-base text-[#0F2651] hover:bg-[#36689e]/10">
+                                <Link href="/search-registry">
+                                    <span className="text-nowrap">Search Registry</span>
                                 </Link>
                             </Button>
                         </AnimatedGroup>
@@ -123,7 +123,7 @@ export default function HeroSection() {
                         },
                         ...transitionVariants,
                     }}>
-                    <div className="mask-b-from-55% relative -mr-56 mt-8 overflow-hidden px-2 sm:mr-0 sm:mt-12 md:mt-20">
+                    <div className="mask-b-from-55% relative mt-8 overflow-hidden px-2 sm:mt-12 md:mt-20">
                         <div className="inset-shadow-2xs ring-background dark:inset-shadow-white/20 bg-background relative mx-auto max-w-5xl overflow-hidden rounded-2xl border p-4 shadow-lg shadow-zinc-950/15 ring-1">
                             <Image
                                 className="bg-background aspect-15/8 relative hidden rounded-2xl dark:block"

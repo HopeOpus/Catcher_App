@@ -28,35 +28,35 @@ export function PricingSection() {
         'Register one property for free',
         'Property dashboard access',
         'Email support',
-        '12 months service duration',
+        'One lifetime free upload per user',
         'Theft alerts',
         'Basic stolen reporting',
-        'Obtain a global digital identity certificate ($1 only)',
+        'Email us for your global certificate: contact@catchersecurities.com',
       ],
       cta: 'Create Free Account',
       href: '/auth/signup',
       popular: false,
     },
     {
-      name: '$1 Monthly',
-      price: '$1',
+      name: '₦800 Monthly',
+      price: '₦800',
       period: 'Monthly',
       description: 'Monthly protection with a free digital identity certificate.',
       features: [
         'Property dashboard access',
         'Email support',
-        '1 months service duration',
+        '1 month service duration',
         'Theft alerts',
         'Basic stolen reporting',
-        'Obtain a global digital identity certificate (Free)',
+        'Email us for your global certificate: contact@catchersecurities.com',
       ],
       cta: 'Start with Catcher',
       href: '/auth/signup',
       popular: false,
     },
     {
-      name: '$5 Annually',
-      price: '$5',
+      name: '₦5,000 Annually',
+      price: '₦5,000',
       period: 'Annually',
       description: 'Recommended annual protection with a free global identity certificate.',
       features: [
@@ -65,7 +65,7 @@ export function PricingSection() {
         '12 months service duration',
         'Theft alerts',
         'Basic stolen reporting',
-        'Obtain a global digital identity certificate (Free)',
+        'Email us for your global certificate: contact@catchersecurities.com',
       ],
       cta: 'Start with Catcher',
       href: '/auth/signup',
@@ -121,7 +121,7 @@ export function PricingSection() {
                     <svg className="h-5 w-5 flex-shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-slate-700">{feature}</span>
+                    <span className="text-slate-700 break-words">{feature}</span>
                   </li>
                 ))}
               </ul>

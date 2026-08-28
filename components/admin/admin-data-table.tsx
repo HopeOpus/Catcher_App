@@ -44,6 +44,9 @@ type AdminDataTableProps<TData extends { id: string }> = {
   pageSizeOptions?: number[];
   selectedRowId?: string | null;
   onSelectRow?: (rowId: string) => void;
+  baseCount?: number;
+  selectedCount?: number;
+  stickyControls?: boolean;
 };
 
 function defaultSearchPredicate<TData extends Record<string, unknown>>(
@@ -73,6 +76,9 @@ export function AdminDataTable<TData extends { id: string }>({
   pageSizeOptions = [5, 8, 12, 20],
   selectedRowId = null,
   onSelectRow,
+  baseCount,
+  selectedCount,
+  stickyControls = true,
 }: AdminDataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -124,54 +130,89 @@ export function AdminDataTable<TData extends { id: string }>({
   const pageStart = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
   const pageEnd =
     totalRows === 0 ? 0 : Math.min(totalRows, pageStart + rows.length - 1);
+  const hasScopedSource = typeof baseCount === "number" && baseCount !== data.length;
+  const activeSelectionCount = selectedCount ?? 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              table.setPageIndex(0);
-            }}
-            placeholder={searchPlaceholder}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <p className="text-sm text-slate-600">
-            {totalRows === 0
-              ? `No ${entityLabel} found`
-              : `Showing ${pageStart}-${pageEnd} of ${totalRows} ${entityLabel}`}
-          </p>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <span>Rows</span>
-            <select
-              value={pagination.pageSize}
+      <div
+        className={cn(
+          "space-y-4",
+          stickyControls ? "md:sticky md:top-4 md:z-20" : undefined,
+        )}
+      >
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 backdrop-blur md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={query}
               onChange={(event) => {
-                table.setPageSize(Number(event.target.value));
+                setQuery(event.target.value);
                 table.setPageIndex(0);
               }}
-              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#36689e]"
-            >
-              {pageSizeOptions.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+              placeholder={searchPlaceholder}
+              className="pl-9"
+            />
+          </div>
 
-      {toolbar ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          {toolbar}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <p className="text-sm text-slate-600">
+              {totalRows === 0
+                ? `No ${entityLabel} found`
+                : `Showing ${pageStart}-${pageEnd} of ${totalRows} ${entityLabel}`}
+            </p>
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <span>Rows</span>
+              <select
+                value={pagination.pageSize}
+                onChange={(event) => {
+                  table.setPageSize(Number(event.target.value));
+                  table.setPageIndex(0);
+                }}
+                className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#36689e]"
+              >
+                {pageSizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
-      ) : null}
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-[#36689e]/10 px-3 py-1 font-medium text-[#0F2651]">
+            Filtered {filteredData.length}
+          </span>
+          {typeof baseCount === "number" ? (
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+              Total {baseCount}
+            </span>
+          ) : null}
+          {hasScopedSource ? (
+            <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
+              Scoped set {data.length}
+            </span>
+          ) : null}
+          {activeSelectionCount > 0 ? (
+            <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-800">
+              Selected {activeSelectionCount}
+            </span>
+          ) : null}
+          {normalizedQuery ? (
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+              Search &quot;{query.trim()}&quot;
+            </span>
+          ) : null}
+        </div>
+
+        {toolbar ? (
+          <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 backdrop-blur">
+            {toolbar}
+          </div>
+        ) : null}
+      </div>
 
       {totalRows === 0 ? (
         <Card className="border-dashed border-slate-300 bg-slate-50">

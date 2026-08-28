@@ -106,6 +106,7 @@ export function AdminCatalogList({
       <AdminDataTable
         columns={columns}
         data={catalogItems}
+        baseCount={catalogItems.length}
         entityLabel="catalog items"
         searchPlaceholder="Search catalog items by name, type, or description"
         emptyStateTitle="No catalog items found"
@@ -160,6 +161,15 @@ export function AdminCatalogList({
             <form
               action={updateCatalogItemAction}
               className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
+              onSubmit={(event) => {
+                const confirmed = window.confirm(
+                  `Save catalog changes for ${selectedItem.name}?`,
+                );
+
+                if (!confirmed) {
+                  event.preventDefault();
+                }
+              }}
             >
               <input type="hidden" name="catalog_item_id" value={selectedItem.id} />
               <input type="hidden" name="redirect_to" value="/admin/catalog" />
@@ -235,6 +245,15 @@ export function AdminCatalogList({
             <form
               action={deleteCatalogItemAction}
               className="rounded-2xl border border-red-200 bg-red-50 p-4"
+              onSubmit={(event) => {
+                const confirmed = window.confirm(
+                  `Delete ${selectedItem.name} from the public catalog? This cannot be undone.`,
+                );
+
+                if (!confirmed) {
+                  event.preventDefault();
+                }
+              }}
             >
               <input type="hidden" name="catalog_item_id" value={selectedItem.id} />
               <input type="hidden" name="redirect_to" value="/admin/catalog" />

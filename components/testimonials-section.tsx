@@ -63,7 +63,7 @@ export function TestimonialsSection() {
           <div>
             <div className="mb-2 text-2xl font-bold text-slate-900">Verification</div>
             <div className="text-slate-600">
-              Check public stolen-item records before purchase.
+              Search public registry records before purchase.
             </div>
           </div>
         </div>

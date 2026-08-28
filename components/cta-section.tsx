@@ -36,7 +36,7 @@ export function CTASection() {
             <Link href="/auth/signup">Create Free Account</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-            <Link href="/stolen-items">Browse Stolen Items</Link>
+            <Link href="/search-registry">Search Registry</Link>
           </Button>
           <Button asChild size="lg" variant="ghost" className="text-white hover:bg-white/10">
             <a href={supportLink}>Talk to Support</a>
@@ -48,7 +48,6 @@ export function CTASection() {
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span>No credit card required</span>
           </div>
           <div className="flex items-center gap-2">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

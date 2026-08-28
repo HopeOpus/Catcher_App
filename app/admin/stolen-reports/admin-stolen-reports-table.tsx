@@ -262,6 +262,8 @@ export function AdminStolenReportsTable({
       <AdminDataTable
         columns={columns}
         data={filteredReports}
+        baseCount={reports.length}
+        selectedCount={selectedReportIds.length}
         entityLabel="reports"
         searchPlaceholder="Search by item, serial number, owner, or location"
         emptyStateTitle="No stolen reports found"
@@ -359,6 +361,19 @@ export function AdminStolenReportsTable({
             <form
               action={bulkUpdateStolenReportStatusAction}
               className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:flex-row xl:items-end xl:justify-between"
+              onSubmit={(event) => {
+                if (selectedReportIds.length === 0) {
+                  return;
+                }
+
+                const confirmed = window.confirm(
+                  `Update ${selectedReportIds.length} selected report${selectedReportIds.length === 1 ? '' : 's'}?`,
+                );
+
+                if (!confirmed) {
+                  event.preventDefault();
+                }
+              }}
             >
               <input
                 type="hidden"
@@ -517,6 +532,15 @@ export function AdminStolenReportsTable({
               <form
                 action={updateStolenReportAction}
                 className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Save report changes for ${selectedReport.propertyName}?`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input type="hidden" name="report_id" value={selectedReport.id} />
                 <input type="hidden" name="redirect_to" value="/admin/stolen-reports" />
@@ -571,6 +595,15 @@ export function AdminStolenReportsTable({
               <form
                 action={deleteStolenReportAction}
                 className="rounded-2xl border border-red-200 bg-red-50 p-4"
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Delete the stolen report for ${selectedReport.propertyName}? This cannot be undone.`,
+                  );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <input type="hidden" name="report_id" value={selectedReport.id} />
                 <input type="hidden" name="redirect_to" value="/admin/stolen-reports" />

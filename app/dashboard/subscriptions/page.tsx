@@ -12,7 +12,6 @@ import {
   getCoverageDisplayState,
   getCurrentAndUpcomingCoverage,
 } from "@/lib/property-coverage";
-import { getNgnUsdRateSnapshot } from "@/lib/exchange-rates";
 import { PROPERTY_PLAN_DEFINITIONS } from "@/lib/property-plans";
 import { prisma } from "@/lib/prisma";
 import { SUPPORT_EMAIL } from "@/lib/support";
@@ -165,7 +164,7 @@ export default async function SubscriptionsPage() {
     userId: authenticatedUser.userId,
   });
 
-  const [properties, freePlanUsageCount, usdRateSnapshot] = await Promise.all([
+  const [properties, freePlanUsageCount] = await Promise.all([
     getManagedPropertyBillingItems(authenticatedUser.userId),
     prisma.propertyCoverage.count({
       where: {
@@ -173,7 +172,6 @@ export default async function SubscriptionsPage() {
         planCode: "free",
       },
     }),
-    getNgnUsdRateSnapshot(),
   ]);
 
   return (
@@ -183,7 +181,6 @@ export default async function SubscriptionsPage() {
       summary={buildDashboardSummary(properties)}
       hasUsedFreePlan={freePlanUsageCount > 0}
       planDefinitions={[...PROPERTY_PLAN_DEFINITIONS]}
-      usdRateSnapshot={usdRateSnapshot}
     />
   );
 }

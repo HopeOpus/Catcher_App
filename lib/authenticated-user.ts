@@ -1,3 +1,5 @@
+import { createClerkClient, verifyToken } from "@clerk/backend";
+import { headers } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
 
@@ -6,6 +8,7 @@ export type AuthenticatedAppUser = {
   email: string;
   name: string;
   candidateEmails: string[];
+  emailVerified: boolean;
 };
 
 type UserSyncClient = Pick<
@@ -95,8 +98,21 @@ export function resolveAuthenticatedAppUserRole(
 }
 
 export async function getAuthenticatedUserId(): Promise<string | null> {
-  const { userId } = await auth();
-  return userId ?? null;
+  const { userId } = await auth({ acceptsToken: "session_token" });
+
+  if (userId) {
+    return userId;
+  }
+
+  const requestHeaders = await headers();
+  const bearerToken = getBearerTokenFromHeaders(requestHeaders);
+
+  if (!bearerToken) {
+    return null;
+  }
+
+  const authenticatedUser = await getAuthenticatedAppUserFromSessionToken(bearerToken);
+  return authenticatedUser?.userId ?? null;
 }
 
 function getStringClaim(
@@ -114,17 +130,29 @@ function getStringClaim(
   return null;
 }
 
-export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | null> {
-  const { userId, sessionClaims } = await auth();
+function getClerkPublishableKey() {
+  return (
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+    process.env.CLERK_PUBLISHABLE_KEY ??
+    ""
+  );
+}
 
-  if (!userId) {
+function getBearerTokenFromHeaders(headersLike: Headers | null | undefined) {
+  if (!headersLike) {
     return null;
   }
 
-  const claims =
-    sessionClaims && typeof sessionClaims === "object"
-      ? (sessionClaims as Record<string, unknown>)
-      : {};
+  const authorizationHeader = headersLike.get("authorization");
+  return authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
+}
+
+async function buildAuthenticatedAppUserFromResolvedIdentity(options: {
+  userId: string;
+  claims?: Record<string, unknown>;
+}): Promise<AuthenticatedAppUser> {
+  const { userId } = options;
+  const claims = options.claims ?? {};
 
   let clerkUser = null;
 
@@ -132,18 +160,18 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     clerkUser = await currentUser();
   } catch (error) {
     console.error(
-      "Failed to load Clerk currentUser; falling back to auth session claims.",
+      "Failed to load Clerk currentUser; falling back to Clerk API lookup.",
       error,
     );
   }
 
-  if (!clerkUser) {
+  if (!clerkUser || clerkUser.id !== userId) {
     try {
       const client = await clerkClient();
       clerkUser = await client.users.getUser(userId);
     } catch (error) {
       console.error(
-        "Failed to load Clerk user by ID; continuing with auth session claims only.",
+        "Failed to load Clerk user by ID; continuing with available identity claims only.",
         error,
       );
     }
@@ -160,10 +188,13 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     ...(clerkUser?.emailAddresses?.map((emailAddress) => emailAddress.emailAddress) ?? []),
     getStringClaim(claims, "email", "email_address"),
   ]);
-
-  const email =
-    candidateEmails[0] ??
-    `${userId}@catcher.local`;
+  const email = candidateEmails[0] ?? `${userId}@catcher.local`;
+  const emailVerified =
+    clerkUser?.emailAddresses?.some(
+      (emailAddress) =>
+        emailAddress.verification?.status === "verified" &&
+        candidateEmails.includes(emailAddress.emailAddress.trim().toLowerCase()),
+    ) ?? false;
   const name =
     clerkUser?.fullName?.trim() ||
     getStringClaim(claims, "name", "full_name") ||
@@ -182,7 +213,122 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser | 
     email,
     name,
     candidateEmails,
+    emailVerified,
   };
+}
+
+export async function getAuthenticatedAppUser(
+  request?: Request,
+): Promise<AuthenticatedAppUser | null> {
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ??
+    requestHeaders.get("host") ??
+    "localhost";
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    "https";
+  const requestForAuth =
+    request ??
+    new Request(`${protocol}://${host}`, {
+      headers: requestHeaders,
+    });
+  const bearerToken =
+    getBearerTokenFromHeaders(request?.headers) ??
+    getBearerTokenFromHeaders(requestHeaders);
+
+  if (bearerToken) {
+    const tokenAuthenticatedUser =
+      await getAuthenticatedAppUserFromSessionToken(bearerToken);
+
+    if (tokenAuthenticatedUser) {
+      return tokenAuthenticatedUser;
+    }
+  }
+
+  if (requestForAuth) {
+    try {
+      const requestClerkClient = createClerkClient({
+        secretKey: process.env.CLERK_SECRET_KEY,
+        publishableKey: getClerkPublishableKey(),
+        jwtKey: process.env.CLERK_JWT_KEY,
+      });
+      const requestState = await requestClerkClient.authenticateRequest(requestForAuth, {
+        acceptsToken: "session_token",
+      });
+
+      if (requestState.isSignedIn) {
+        const authObject = requestState.toAuth();
+
+        if (authObject.userId) {
+          const authClaims =
+            authObject.sessionClaims && typeof authObject.sessionClaims === "object"
+              ? (authObject.sessionClaims as Record<string, unknown>)
+              : {};
+
+          return buildAuthenticatedAppUserFromResolvedIdentity({
+            userId: authObject.userId,
+            claims: authClaims,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to authenticate request with Clerk request authenticator.", error);
+    }
+  }
+
+  const { userId, sessionClaims } = await auth({ acceptsToken: "session_token" });
+
+  if (!userId) {
+    if (!bearerToken) {
+      return null;
+    }
+
+    return getAuthenticatedAppUserFromSessionToken(bearerToken);
+  }
+
+  const claims =
+    sessionClaims && typeof sessionClaims === "object"
+      ? (sessionClaims as Record<string, unknown>)
+      : {};
+
+  return buildAuthenticatedAppUserFromResolvedIdentity({
+    userId,
+    claims,
+  });
+}
+
+export async function getAuthenticatedAppUserFromSessionToken(
+  sessionToken: string | null | undefined,
+): Promise<AuthenticatedAppUser | null> {
+  const token = typeof sessionToken === "string" ? sessionToken.trim() : "";
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const claims = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      jwtKey: process.env.CLERK_JWT_KEY,
+    });
+
+    const userId =
+      getStringClaim(claims as Record<string, unknown>, "sub") ??
+      null;
+
+    if (!userId) {
+      return null;
+    }
+
+    return buildAuthenticatedAppUserFromResolvedIdentity({
+      userId,
+      claims: claims as Record<string, unknown>,
+    });
+  } catch (error) {
+    console.error("Failed to verify Clerk session token for upload request.", error);
+    return null;
+  }
 }
 
 export async function syncAuthenticatedAppUserRecord(
@@ -312,3 +458,6 @@ export async function syncAuthenticatedAppUserRecord(
 
   return authenticatedUser;
 }
+
+
+

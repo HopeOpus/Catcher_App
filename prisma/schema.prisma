@@ -68,6 +68,7 @@ enum PropertyCoverageStatus {
 }
 
 enum PaymentCurrency {
+  USD
   NGN
 
   @@map("payment_currency")
@@ -124,6 +125,14 @@ enum NotificationType {
   PropertyArchived
   PropertyRestored
   StolenReportUpdated
+  ReferralSignupDetected
+  ReferralSuccessful
+  ReferralMilestoneReached
+  CreditsReceived
+  CreditsTransferred
+  CreditsExpiringSoon
+  CreditsExpired
+  AmbassadorBadgeEarned
 
   @@map("notification_type")
 }
@@ -135,6 +144,10 @@ enum AuditLogEntityType {
   CatalogItem
   PropertyCoverage
   PaymentEvent
+  WalletTransaction
+  ReferralProfile
+  ReferralRelationship
+  PromotionCampaign
 
   @@map("audit_log_entity_type")
 }
@@ -153,6 +166,63 @@ enum StolenReportStatus {
   Resolved
 
   @@map("stolen_report_status")
+}
+enum WalletTransactionType {
+  referralBonus        @map("referral_bonus")
+  milestoneBonus       @map("milestone_bonus")
+  promotionBonus       @map("promotion_bonus")
+  giftReceived         @map("gift_received")
+  giftSent             @map("gift_sent")
+  registrationSpend    @map("registration_spend")
+  premiumFeatureSpend  @map("premium_feature_spend")
+  theftAlertBoostSpend @map("theft_alert_boost_spend")
+  expiryDebit          @map("expiry_debit")
+  adminAdjustment      @map("admin_adjustment")
+  manualGrant          @map("manual_grant")
+  manualReversal       @map("manual_reversal")
+  transferReversal     @map("transfer_reversal")
+  registrationRefund   @map("registration_refund")
+
+  @@map("wallet_transaction_type")
+}
+
+enum WalletTransactionDirection {
+  credit
+  debit
+
+  @@map("wallet_transaction_direction")
+}
+
+enum ReferralRelationshipStatus {
+  attached
+  qualified
+  rewarded
+  rejected
+
+  @@map("referral_relationship_status")
+}
+
+enum ReferralFraudReviewStatus {
+  clear
+  flagged
+  blocked
+
+  @@map("referral_fraud_review_status")
+}
+
+enum PromotionCampaignStatus {
+  draft
+  active
+  expired
+  cancelled
+
+  @@map("promotion_campaign_status")
+}
+
+enum PromotionRewardType {
+  fixedCredits @map("fixed_credits")
+
+  @@map("promotion_reward_type")
 }
 
 model User {
@@ -176,6 +246,11 @@ model User {
   stolenReports          StolenReport[]
   notifications          Notification[]
   billingReceipts        BillingReceipt[]
+  wallet                 Wallet?
+  walletTransactions     WalletTransaction[]
+  referralProfile        ReferralProfile?
+  referralsMade          ReferralRelationship[]    @relation("UserReferralsMade")
+  referralSource         ReferralRelationship?     @relation("UserReferralSource")
   auditLogs              AuditLog[]                @relation("AuditLogActor")
   authoredAdminNotes     AdminNote[]               @relation("AdminNoteAuthor")
   receivedAdminNotes     AdminNote[]               @relation("AdminNoteTargetUser")
@@ -295,6 +370,7 @@ model PropertyCoverage {
   notifications  Notification[]
   billingReceipt BillingReceipt?
   auditLogs      AuditLog[]
+  qualifyingReferralRelationships ReferralRelationship[] @relation("ReferralQualificationCoverage")
 
   @@index([propertyId])
   @@index([userId])
@@ -338,6 +414,7 @@ model PropertyCheckoutSession {
   property Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   billingReceipt BillingReceipt?
+  qualifyingReferralRelationships ReferralRelationship[] @relation("ReferralQualificationCheckoutSession")
 
   @@index([userId])
   @@index([propertyId])
@@ -578,6 +655,132 @@ model PropertyPublicVerification {
   @@map("property_public_verifications")
 }
 
+
+model Wallet {
+  id                           String              @id @db.VarChar(255)
+  userId                       String              @unique @map("user_id") @db.VarChar(255)
+  balanceCredits               Int                 @default(0) @map("balance_credits")
+  lifetimeEarnedCredits        Int                 @default(0) @map("lifetime_earned_credits")
+  lifetimeSpentCredits         Int                 @default(0) @map("lifetime_spent_credits")
+  lifetimeExpiredCredits       Int                 @default(0) @map("lifetime_expired_credits")
+  lifetimeTransferredInCredits Int                 @default(0) @map("lifetime_transferred_in_credits")
+  lifetimeTransferredOutCredits Int                @default(0) @map("lifetime_transferred_out_credits")
+  createdAt                    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id                       String                     @id @db.VarChar(255)
+  walletId                 String                     @map("wallet_id") @db.VarChar(255)
+  userId                   String                     @map("user_id") @db.VarChar(255)
+  type                     WalletTransactionType
+  direction                WalletTransactionDirection
+  amountCredits            Int                        @map("amount_credits")
+  balanceAfterCredits      Int                        @map("balance_after_credits")
+  description              String?                    @db.VarChar(255)
+  referenceType            String?                    @map("reference_type") @db.VarChar(100)
+  referenceId              String?                    @map("reference_id") @db.VarChar(255)
+  expiresAt                DateTime?                  @map("expires_at") @db.Timestamptz
+  expiredFromTransactionId String?                    @map("expired_from_transaction_id") @db.VarChar(255)
+  promotionCampaignId      String?                    @map("promotion_campaign_id") @db.VarChar(255)
+  metadata                 Json?
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  wallet                 Wallet                      @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user                   User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiredFromTransaction WalletTransaction?          @relation("WalletTransactionExpirySource", fields: [expiredFromTransactionId], references: [id], onDelete: SetNull)
+  expiryDebits           WalletTransaction[]         @relation("WalletTransactionExpirySource")
+  promotionCampaign      PromotionCampaign?          @relation(fields: [promotionCampaignId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([referenceType, referenceId])
+  @@index([expiresAt])
+  @@index([promotionCampaignId])
+  @@map("wallet_transactions")
+}
+
+model ReferralProfile {
+  id                       String                   @id @db.VarChar(255)
+  userId                   String                   @unique @map("user_id") @db.VarChar(255)
+  referralCode             String                   @unique @map("referral_code") @db.VarChar(50)
+  qualifiedReferralCount   Int                      @default(0) @map("qualified_referral_count")
+  milestone5AwardedAt      DateTime?                @map("milestone_5_awarded_at") @db.Timestamptz
+  milestone20AwardedAt     DateTime?                @map("milestone_20_awarded_at") @db.Timestamptz
+  milestone100AwardedAt    DateTime?                @map("milestone_100_awarded_at") @db.Timestamptz
+  ambassadorBadgeAwardedAt DateTime?                @map("ambassador_badge_awarded_at") @db.Timestamptz
+  isDisabled               Boolean                  @default(false) @map("is_disabled")
+  disabledAt               DateTime?                @map("disabled_at") @db.Timestamptz
+  disabledReason           String?                  @map("disabled_reason") @db.VarChar(255)
+  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relationships ReferralRelationship[] @relation("ReferralProfileRelationships")
+
+  @@index([isDisabled])
+  @@map("referral_profiles")
+}
+
+model ReferralRelationship {
+  id                             String                     @id @db.VarChar(255)
+  referralProfileId              String                     @map("referral_profile_id") @db.VarChar(255)
+  referrerUserId                 String                     @map("referrer_user_id") @db.VarChar(255)
+  referredUserId                 String                     @unique @map("referred_user_id") @db.VarChar(255)
+  referralCodeUsed               String                     @map("referral_code_used") @db.VarChar(50)
+  status                         ReferralRelationshipStatus @default(attached)
+  fraudReviewStatus              ReferralFraudReviewStatus  @default(clear) @map("fraud_review_status")
+  fraudReviewReason              String?                    @map("fraud_review_reason") @db.VarChar(255)
+  attachDeviceInstallId          String?                    @map("attach_device_install_id") @db.VarChar(255)
+  attachedAt                     DateTime                   @default(now()) @map("attached_at") @db.Timestamptz
+  qualifiedAt                    DateTime?                  @map("qualified_at") @db.Timestamptz
+  rewardedAt                     DateTime?                  @map("rewarded_at") @db.Timestamptz
+  qualificationCheckoutSessionId String?                    @map("qualification_checkout_session_id") @db.VarChar(255)
+  qualificationCoverageId        String?                    @map("qualification_coverage_id") @db.VarChar(255)
+  metadata                       Json?
+  createdAt                      DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                      DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  referralProfile              ReferralProfile          @relation("ReferralProfileRelationships", fields: [referralProfileId], references: [id], onDelete: Cascade)
+  referrer                     User                     @relation("UserReferralsMade", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred                     User                     @relation("UserReferralSource", fields: [referredUserId], references: [id], onDelete: Cascade)
+  qualificationCheckoutSession PropertyCheckoutSession? @relation("ReferralQualificationCheckoutSession", fields: [qualificationCheckoutSessionId], references: [id], onDelete: SetNull)
+  qualificationCoverage        PropertyCoverage?        @relation("ReferralQualificationCoverage", fields: [qualificationCoverageId], references: [id], onDelete: SetNull)
+
+  @@index([referralProfileId])
+  @@index([referrerUserId])
+  @@index([status])
+  @@index([fraudReviewStatus])
+  @@index([attachDeviceInstallId])
+  @@index([qualifiedAt])
+  @@index([rewardedAt])
+  @@map("referral_relationships")
+}
+
+model PromotionCampaign {
+  id             String                  @id @db.VarChar(255)
+  name           String                  @db.VarChar(120)
+  code           String?                 @unique @db.VarChar(50)
+  status         PromotionCampaignStatus @default(draft)
+  rewardType     PromotionRewardType     @default(fixedCredits) @map("reward_type")
+  rewardCredits  Int                     @default(0) @map("reward_credits")
+  startsAt       DateTime?               @map("starts_at") @db.Timestamptz
+  endsAt         DateTime?               @map("ends_at") @db.Timestamptz
+  maxRedemptions Int?                    @map("max_redemptions")
+  metadata       Json?
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  walletTransactions WalletTransaction[]
+
+  @@map("promotion_campaigns")
+}
 model RateLimitBucket {
   id              String   @id @db.VarChar(255)
   scope           String   @db.VarChar(100)
@@ -594,3 +797,8 @@ model RateLimitBucket {
   @@index([blockedUntil])
   @@map("rate_limit_buckets")
 }
+
+
+
+
+

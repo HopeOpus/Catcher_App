@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { FileText, Search } from 'lucide-react';
+import { CheckCircle2, Clock3, FileText, Search } from 'lucide-react';
+import DashboardPageHeader from '@/components/dashboard/dashboard-page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,8 @@ export type BillingReceiptListItem = {
   reference: string | null;
   planName: string;
   amountLabel: string;
+  transactionStatus: string | null;
+  processingOutcome: string | null;
   startDate: string;
   expiryDate: string | null;
   issuedAt: string;
@@ -42,6 +45,36 @@ function formatDate(value: string | null) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function getReceiptStatusLabel(receipt: BillingReceiptListItem) {
+  if (receipt.transactionStatus) {
+    return receipt.transactionStatus;
+  }
+
+  if (receipt.processingOutcome === 'completed') {
+    return 'Confirmed';
+  }
+
+  return 'Confirmed';
+}
+
+function getReceiptStatusClasses(receipt: BillingReceiptListItem) {
+  const normalized = getReceiptStatusLabel(receipt).toLowerCase();
+
+  if (normalized.includes('success') || normalized.includes('complete')) {
+    return 'bg-green-100 text-green-800';
+  }
+
+  if (normalized.includes('pending') || normalized.includes('process')) {
+    return 'bg-amber-100 text-amber-800';
+  }
+
+  if (normalized.includes('fail') || normalized.includes('cancel')) {
+    return 'bg-red-100 text-red-800';
+  }
+
+  return 'bg-slate-100 text-slate-700';
 }
 
 export default function ReceiptsPageClient({
@@ -105,18 +138,16 @@ export default function ReceiptsPageClient({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#0F2651]">Billing History</h1>
-          <p className="mt-2 max-w-3xl text-gray-600">
-            View every property payment, open the receipt, and keep a printable
-            billing record.
-          </p>
-        </div>
-        <Button asChild className="bg-[#36689e] text-white hover:bg-[#0F2651]">
-          <Link href="/dashboard/subscriptions">Manage Subscriptions</Link>
-        </Button>
-      </div>
+      <DashboardPageHeader
+        eyebrow="Billing"
+        title="Billing History"
+        description="View every property payment, confirm its status, open the receipt, and keep a printable billing record."
+        actions={
+          <Button asChild className="bg-[#36689e] text-white hover:bg-[#0F2651]">
+            <Link href="/dashboard/subscriptions">Manage Subscriptions</Link>
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {summaryCards.map((summary) => (
@@ -171,9 +202,23 @@ export default function ReceiptsPageClient({
               No receipts found
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">
-              As soon as a property subscription is paid and activated, its
-              receipt will appear here.
+              {receipts.length === 0
+                ? 'As soon as a property subscription is paid and activated, its receipt will appear here.'
+                : 'No receipts match your current search or property filter.'}
             </p>
+            {receipts.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-5 border-[#36689e] text-[#0F2651]"
+                onClick={() => {
+                  setSearchTerm('');
+                  setPropertyFilter('all');
+                }}
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : (
@@ -189,6 +234,9 @@ export default function ReceiptsPageClient({
                     <Badge className="bg-[#36689e]/10 text-[#0F2651]">
                       {receipt.planName}
                     </Badge>
+                    <Badge className={getReceiptStatusClasses(receipt)}>
+                      {getReceiptStatusLabel(receipt)}
+                    </Badge>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm text-slate-600">
                     <span>Receipt: {receipt.receiptNumber}</span>
@@ -203,19 +251,31 @@ export default function ReceiptsPageClient({
                     <span>Issued {formatDate(receipt.issuedAt)}</span>
                   </div>
                 </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="border-[#36689e] text-[#0F2651]"
-                >
-                  <Link
-                    href={`/dashboard/receipts/${encodeURIComponent(
-                      receipt.receiptNumber,
-                    )}`}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-[#36689e] text-[#0F2651]"
                   >
-                    View Receipt
-                  </Link>
-                </Button>
+                    <Link href={`/dashboard/properties/${encodeURIComponent(receipt.propertyId)}`}>
+                      <Clock3 className="mr-2 h-4 w-4" />
+                      Property Details
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="bg-[#36689e] text-white hover:bg-[#0F2651]"
+                  >
+                    <Link
+                      href={`/dashboard/receipts/${encodeURIComponent(
+                        receipt.receiptNumber,
+                      )}`}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      View Receipt
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

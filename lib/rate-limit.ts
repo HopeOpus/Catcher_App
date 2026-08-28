@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { isDatabaseConnectionError } from "@/lib/database-errors";
 import { prisma } from "@/lib/prisma";
 
 type RateLimitWriteClient =
@@ -13,6 +14,7 @@ export type ConsumeRateLimitInput = {
   windowMs: number;
   blockDurationMs?: number;
   now?: Date;
+  failOpenOnError?: boolean;
 };
 
 export type ConsumeRateLimitResult = {
@@ -72,56 +74,76 @@ export async function consumeRateLimit(
   const windowEndsAt = new Date(windowStartedAt.getTime() + input.windowMs);
   const blockDurationMs = input.blockDurationMs ?? input.windowMs;
 
-  const bucket = await db.rateLimitBucket.upsert({
-    where: {
-      scope_identifier_windowStartedAt: {
+  try {
+    const bucket = await db.rateLimitBucket.upsert({
+      where: {
+        scope_identifier_windowStartedAt: {
+          scope: input.scope,
+          identifier: input.identifier,
+          windowStartedAt,
+        },
+      },
+      update: {
+        hitCount: {
+          increment: 1,
+        },
+        windowEndsAt,
+      },
+      create: {
+        id: randomUUID(),
         scope: input.scope,
         identifier: input.identifier,
         windowStartedAt,
+        windowEndsAt,
+        hitCount: 1,
       },
-    },
-    update: {
-      hitCount: {
-        increment: 1,
-      },
-      windowEndsAt,
-    },
-    create: {
-      id: randomUUID(),
-      scope: input.scope,
-      identifier: input.identifier,
-      windowStartedAt,
-      windowEndsAt,
-      hitCount: 1,
-    },
-  });
-
-  let blockedUntil = bucket.blockedUntil ?? null;
-
-  if (!blockedUntil && bucket.hitCount > input.limit) {
-    blockedUntil = new Date(now.getTime() + blockDurationMs);
-
-    await db.rateLimitBucket.update({
-      where: { id: bucket.id },
-      data: { blockedUntil },
     });
+
+    let blockedUntil = bucket.blockedUntil ?? null;
+
+    if (!blockedUntil && bucket.hitCount > input.limit) {
+      blockedUntil = new Date(now.getTime() + blockDurationMs);
+
+      await db.rateLimitBucket.update({
+        where: { id: bucket.id },
+        data: { blockedUntil },
+      });
+    }
+
+    const effectiveBlockedUntil =
+      blockedUntil && blockedUntil > now ? blockedUntil : null;
+    const retryAfterSeconds = effectiveBlockedUntil
+      ? Math.max(1, Math.ceil((effectiveBlockedUntil.getTime() - now.getTime()) / 1000))
+      : 0;
+    const remaining = effectiveBlockedUntil
+      ? 0
+      : Math.max(0, input.limit - bucket.hitCount);
+
+    return {
+      allowed: effectiveBlockedUntil === null,
+      remaining,
+      retryAfterSeconds,
+      totalHits: bucket.hitCount,
+      windowEndsAt,
+      blockedUntil: effectiveBlockedUntil,
+    };
+  } catch (error) {
+    if (input.failOpenOnError && isDatabaseConnectionError(error)) {
+      console.warn(
+        `Rate limit store unavailable for scope "${input.scope}". Allowing request temporarily.`,
+        error,
+      );
+
+      return {
+        allowed: true,
+        remaining: input.limit,
+        retryAfterSeconds: 0,
+        totalHits: 0,
+        windowEndsAt,
+        blockedUntil: null,
+      };
+    }
+
+    throw error;
   }
-
-  const effectiveBlockedUntil =
-    blockedUntil && blockedUntil > now ? blockedUntil : null;
-  const retryAfterSeconds = effectiveBlockedUntil
-    ? Math.max(1, Math.ceil((effectiveBlockedUntil.getTime() - now.getTime()) / 1000))
-    : 0;
-  const remaining = effectiveBlockedUntil
-    ? 0
-    : Math.max(0, input.limit - bucket.hitCount);
-
-  return {
-    allowed: effectiveBlockedUntil === null,
-    remaining,
-    retryAfterSeconds,
-    totalHits: bucket.hitCount,
-    windowEndsAt,
-    blockedUntil: effectiveBlockedUntil,
-  };
 }

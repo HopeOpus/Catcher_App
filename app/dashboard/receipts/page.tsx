@@ -27,19 +27,28 @@ async function getReceipts(userId: string): Promise<BillingReceiptListItem[]> {
           name: true,
         },
       },
+      paymentEventLog: {
+        select: {
+          transactionStatus: true,
+          processingOutcome: true,
+          reference: true,
+        },
+      },
     },
     orderBy: [{ issuedAt: 'desc' }, { createdAt: 'desc' }],
   });
 
   return receipts.map((receipt) => ({
     id: receipt.id,
-    receiptNumber: receipt.receiptNumber,
-    propertyId: receipt.property.id,
-    propertyName: receipt.property.name,
-    reference: receipt.reference,
-    planName: receipt.planName,
-    amountLabel: formatNgnFromKobo(receipt.amountKobo),
-    startDate: receipt.startsAt.toISOString(),
+      receiptNumber: receipt.receiptNumber,
+      propertyId: receipt.property.id,
+      propertyName: receipt.property.name,
+      reference: receipt.reference ?? receipt.paymentEventLog?.reference ?? null,
+      planName: receipt.planName,
+      amountLabel: formatNgnFromKobo(receipt.amountKobo),
+      transactionStatus: receipt.paymentEventLog?.transactionStatus ?? null,
+      processingOutcome: receipt.paymentEventLog?.processingOutcome ?? null,
+      startDate: receipt.startsAt.toISOString(),
     expiryDate: receipt.expiresAt?.toISOString() ?? null,
     issuedAt: receipt.issuedAt.toISOString(),
   }));

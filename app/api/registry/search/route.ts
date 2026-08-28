@@ -74,12 +74,10 @@ export async function POST(request: Request) {
   try {
     const authenticatedUser = await getAuthenticatedAppUser();
 
-    if (!authenticatedUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (authenticatedUser) {
+      await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+      await syncPropertyLifecycle(prisma, { userId: authenticatedUser.userId });
     }
-
-    await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-    await syncPropertyLifecycle(prisma, { userId: authenticatedUser.userId });
 
     const body = await request.json().catch(() => ({}));
     const query = typeof body.query === "string" ? body.query.trim() : "";

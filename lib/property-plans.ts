@@ -1,7 +1,7 @@
 import type { PropertyPlanCodeValue } from "@/lib/catcher-domain";
 
-export const MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 80000;
-export const YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 500000;
+export const MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 80_000;
+export const YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 500_000;
 export const PROPERTY_PLAN_GRACE_PERIOD_DAYS = 7;
 export const FREE_PROPERTY_PLAN_LIFETIME_LIMIT = 1;
 

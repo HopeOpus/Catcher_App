@@ -23,6 +23,7 @@ import {
 import { safeCreateNotification } from '@/lib/notifications';
 import { finalizePaystackCheckoutByReference } from '@/lib/property-checkout';
 import { prisma } from '@/lib/prisma';
+import { adjustWalletCreditsByAdmin } from '@/lib/wallet';
 
 function getStringValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -98,12 +99,14 @@ function revalidateAdminPanel() {
     '/admin/stolen-reports',
     '/admin/catalog',
     '/admin/payments',
+    '/admin/wallet',
     '/admin/audit-logs',
     '/dashboard',
     '/dashboard/properties',
     '/dashboard/stolen-reports',
     '/dashboard/subscriptions',
     '/stolen-items',
+    '/search-registry',
   ].forEach((path) => revalidatePath(path));
 }
 
@@ -1522,3 +1525,459 @@ export async function updatePaymentReviewAction(formData: FormData) {
     message: 'Payment review updated successfully.',
   });
 }
+
+
+function parseSignedCredits(value: string) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed === 0) {
+    throw new Error('Enter a non-zero whole number of credits. Use a negative number to debit.');
+  }
+
+  return parsed;
+}
+
+function parseOptionalDateTimeInput(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Enter a valid date and time.');
+  }
+
+  return parsed;
+}
+
+function normalizePromotionCode(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  return normalized.length > 0 ? normalized.slice(0, 50) : null;
+}
+
+function isReferralFraudReviewStatus(value: string): value is 'clear' | 'flagged' | 'blocked' {
+  return value === 'clear' || value === 'flagged' || value === 'blocked';
+}
+
+function isPromotionCampaignStatus(value: string): value is 'draft' | 'active' | 'expired' | 'cancelled' {
+  return value === 'draft' || value === 'active' || value === 'expired' || value === 'cancelled';
+}
+
+function buildPromotionCampaignMetadata(
+  note: string | null,
+  adminUser: AdminAppUser,
+  existingMetadata?: Prisma.JsonValue,
+) {
+  const currentMetadata =
+    existingMetadata && typeof existingMetadata === 'object' && !Array.isArray(existingMetadata)
+      ? existingMetadata
+      : {};
+
+  return {
+    ...currentMetadata,
+    adminNote: note,
+    lastManagedByAdminUserId: adminUser.userId,
+    lastManagedByAdminEmail: adminUser.email,
+    lastManagedAt: new Date().toISOString(),
+  } satisfies Prisma.InputJsonValue;
+}
+
+export async function adjustWalletCreditsAction(formData: FormData) {
+  const redirectTo = getRedirectTarget(formData, '/admin/wallet');
+
+  try {
+    const adminUser = await assertAdminAccess();
+    const userEmail = getStringValue(formData, 'user_email').toLowerCase();
+    const amountCredits = parseSignedCredits(getStringValue(formData, 'amount_credits'));
+    const reason = getStringValue(formData, 'reason');
+
+    if (!userEmail) {
+      throw new Error('User email is required.');
+    }
+
+    if (!reason) {
+      throw new Error('Adjustment reason is required.');
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { email: userEmail },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new Error('User not found for that email address.');
+    }
+
+    const adjustmentReferenceId = randomUUID();
+    const result = await adjustWalletCreditsByAdmin({
+      userId: targetUser.id,
+      amountCredits,
+      reason,
+      referenceId: adjustmentReferenceId,
+      metadata: {
+        adminUserId: adminUser.userId,
+        adminEmail: adminUser.email,
+        targetEmail: targetUser.email,
+      },
+    });
+
+    await recordAdminAudit(adminUser, {
+      action: 'wallet.adjusted',
+      entityType: 'WalletTransaction' as AuditLogEntityType,
+      entityId: result.transaction.id,
+      entityLabel: targetUser.email,
+      targetUserId: targetUser.id,
+      summary: `${getAdminActorLabel(adminUser)} ${amountCredits > 0 ? 'credited' : 'debited'} ${Math.abs(amountCredits)} wallet credits ${amountCredits > 0 ? 'to' : 'from'} ${targetUser.email}.`,
+      details: {
+        amountCredits,
+        reason,
+        adjustmentReferenceId,
+        balanceAfterCredits: result.wallet.balanceCredits,
+        targetName: targetUser.name,
+        targetEmail: targetUser.email,
+      },
+    });
+
+    revalidateAdminPanel();
+  } catch (error) {
+    redirectWithResult(redirectTo, {
+      tone: 'error',
+      message:
+        error instanceof Error ? error.message : 'Failed to adjust wallet credits.',
+    });
+  }
+
+  redirectWithResult(redirectTo, {
+    tone: 'success',
+    message: 'Wallet credits adjusted successfully.',
+  });
+}
+
+export async function updateReferralReviewStatusAction(formData: FormData) {
+  const redirectTo = getRedirectTarget(formData, '/admin/wallet');
+
+  try {
+    const adminUser = await assertAdminAccess();
+    const relationshipId = getStringValue(formData, 'relationship_id');
+    const fraudReviewStatus = getStringValue(formData, 'fraud_review_status');
+    const reviewReason = getNullableStringValue(formData, 'review_reason');
+
+    if (!relationshipId || !isReferralFraudReviewStatus(fraudReviewStatus)) {
+      throw new Error('Select a valid referral relationship and review status.');
+    }
+
+    const relationship = await prisma.referralRelationship.findUnique({
+      where: { id: relationshipId },
+      include: {
+        referrer: {
+          select: { id: true, name: true, email: true },
+        },
+        referred: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    if (!relationship) {
+      throw new Error('Referral relationship not found.');
+    }
+
+    const nextStatus =
+      fraudReviewStatus === 'blocked'
+        ? relationship.status === 'attached' ? 'rejected' : relationship.status
+        : relationship.status === 'rejected'
+          ? 'attached'
+          : relationship.status;
+
+    await prisma.referralRelationship.update({
+      where: { id: relationshipId },
+      data: {
+        fraudReviewStatus,
+        fraudReviewReason: reviewReason,
+        status: nextStatus,
+      },
+    });
+
+    await recordAdminAudit(adminUser, {
+      action: 'referral.review.updated',
+      entityType: 'ReferralRelationship' as AuditLogEntityType,
+      entityId: relationship.id,
+      entityLabel: relationship.referralCodeUsed,
+      targetUserId: relationship.referredUserId,
+      summary: `${getAdminActorLabel(adminUser)} updated referral review for ${relationship.referred.email}.`,
+      details: {
+        referrerEmail: relationship.referrer.email,
+        referredEmail: relationship.referred.email,
+        previousFraudReviewStatus: relationship.fraudReviewStatus,
+        nextFraudReviewStatus: fraudReviewStatus,
+        previousStatus: relationship.status,
+        nextStatus,
+        reviewReason,
+      },
+    });
+
+    revalidateAdminPanel();
+  } catch (error) {
+    redirectWithResult(redirectTo, {
+      tone: 'error',
+      message:
+        error instanceof Error ? error.message : 'Failed to update referral review.',
+    });
+  }
+
+  redirectWithResult(redirectTo, {
+    tone: 'success',
+    message: 'Referral review updated successfully.',
+  });
+}
+
+export async function toggleReferralCodeStatusAction(formData: FormData) {
+  const redirectTo = getRedirectTarget(formData, '/admin/wallet');
+
+  try {
+    const adminUser = await assertAdminAccess();
+    const referralProfileId = getStringValue(formData, 'referral_profile_id');
+    const mode = getStringValue(formData, 'mode');
+    const disableReason = getNullableStringValue(formData, 'disable_reason');
+
+    if (!referralProfileId || (mode !== 'disable' && mode !== 'enable')) {
+      throw new Error('Select a valid referral profile and action.');
+    }
+
+    if (mode === 'disable' && !disableReason) {
+      throw new Error('Provide a reason before disabling a referral code.');
+    }
+
+    const profile = await prisma.referralProfile.findUnique({
+      where: { id: referralProfileId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      throw new Error('Referral profile not found.');
+    }
+
+    await prisma.referralProfile.update({
+      where: { id: referralProfileId },
+      data:
+        mode === 'disable'
+          ? {
+              isDisabled: true,
+              disabledAt: new Date(),
+              disabledReason: disableReason,
+            }
+          : {
+              isDisabled: false,
+              disabledAt: null,
+              disabledReason: null,
+            },
+    });
+
+    if (mode === 'disable') {
+      await prisma.referralRelationship.updateMany({
+        where: {
+          referralProfileId,
+          qualifiedAt: null,
+          rewardedAt: null,
+          status: {
+            in: ['attached', 'rejected'],
+          },
+        },
+        data: {
+          fraudReviewStatus: 'blocked',
+          fraudReviewReason: disableReason ?? 'Referral code disabled by admin.',
+          status: 'rejected',
+        },
+      });
+    }
+
+    await recordAdminAudit(adminUser, {
+      action: mode === 'disable' ? 'referral.code.disabled' : 'referral.code.enabled',
+      entityType: 'ReferralProfile' as AuditLogEntityType,
+      entityId: profile.id,
+      entityLabel: profile.referralCode,
+      targetUserId: profile.userId,
+      summary: `${getAdminActorLabel(adminUser)} ${mode === 'disable' ? 'disabled' : 're-enabled'} referral code ${profile.referralCode}.`,
+      details: {
+        referralCode: profile.referralCode,
+        userEmail: profile.user.email,
+        userName: profile.user.name,
+        mode,
+        disableReason,
+      },
+    });
+
+    revalidateAdminPanel();
+  } catch (error) {
+    redirectWithResult(redirectTo, {
+      tone: 'error',
+      message:
+        error instanceof Error ? error.message : 'Failed to update the referral code status.',
+    });
+  }
+
+  redirectWithResult(redirectTo, {
+    tone: 'success',
+    message: 'Referral code status updated successfully.',
+  });
+}
+
+export async function createPromotionCampaignAction(formData: FormData) {
+  const redirectTo = getRedirectTarget(formData, '/admin/wallet');
+
+  try {
+    const adminUser = await assertAdminAccess();
+    const name = getStringValue(formData, 'name');
+    const code = normalizePromotionCode(getNullableStringValue(formData, 'code'));
+    const status = getStringValue(formData, 'status');
+    const rewardCredits = Number.parseInt(getStringValue(formData, 'reward_credits'), 10);
+    const startsAt = parseOptionalDateTimeInput(getNullableStringValue(formData, 'starts_at'));
+    const endsAt = parseOptionalDateTimeInput(getNullableStringValue(formData, 'ends_at'));
+    const maxRedemptionsRaw = getNullableStringValue(formData, 'max_redemptions');
+    const adminNote = getNullableStringValue(formData, 'admin_note');
+
+    if (!name) {
+      throw new Error('Campaign name is required.');
+    }
+
+    if (!isPromotionCampaignStatus(status)) {
+      throw new Error('Select a valid promotion status.');
+    }
+
+    if (!Number.isFinite(rewardCredits) || rewardCredits <= 0) {
+      throw new Error('Reward credits must be a positive whole number.');
+    }
+
+    const maxRedemptions = maxRedemptionsRaw ? Number.parseInt(maxRedemptionsRaw, 10) : null;
+    if (maxRedemptions !== null && (!Number.isFinite(maxRedemptions) || maxRedemptions <= 0)) {
+      throw new Error('Max redemptions must be a positive whole number when provided.');
+    }
+
+    if (startsAt && endsAt && startsAt.getTime() > endsAt.getTime()) {
+      throw new Error('Campaign end date must be after the start date.');
+    }
+
+    const campaign = await prisma.promotionCampaign.create({
+      data: {
+        id: randomUUID(),
+        name: name.slice(0, 120),
+        code,
+        status,
+        rewardCredits,
+        startsAt,
+        endsAt,
+        maxRedemptions,
+        metadata: buildPromotionCampaignMetadata(adminNote, adminUser),
+      },
+    });
+
+    await recordAdminAudit(adminUser, {
+      action: 'promotion.created',
+      entityType: 'PromotionCampaign' as AuditLogEntityType,
+      entityId: campaign.id,
+      entityLabel: campaign.name,
+      summary: `${getAdminActorLabel(adminUser)} created promotion campaign ${campaign.name}.`,
+      details: {
+        code: campaign.code,
+        status: campaign.status,
+        rewardCredits: campaign.rewardCredits,
+        startsAt: campaign.startsAt?.toISOString() ?? null,
+        endsAt: campaign.endsAt?.toISOString() ?? null,
+        maxRedemptions: campaign.maxRedemptions,
+        adminNote,
+      },
+    });
+
+    revalidateAdminPanel();
+  } catch (error) {
+    redirectWithResult(redirectTo, {
+      tone: 'error',
+      message:
+        error instanceof Error ? error.message : 'Failed to create the promotion campaign.',
+    });
+  }
+
+  redirectWithResult(redirectTo, {
+    tone: 'success',
+    message: 'Promotion campaign created successfully.',
+  });
+}
+
+export async function updatePromotionCampaignStatusAction(formData: FormData) {
+  const redirectTo = getRedirectTarget(formData, '/admin/wallet');
+
+  try {
+    const adminUser = await assertAdminAccess();
+    const campaignId = getStringValue(formData, 'campaign_id');
+    const status = getStringValue(formData, 'status');
+    const adminNote = getNullableStringValue(formData, 'admin_note');
+
+    if (!campaignId || !isPromotionCampaignStatus(status)) {
+      throw new Error('Select a valid promotion campaign and status.');
+    }
+
+    const existingCampaign = await prisma.promotionCampaign.findUnique({
+      where: { id: campaignId },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        metadata: true,
+      },
+    });
+
+    if (!existingCampaign) {
+      throw new Error('Promotion campaign not found.');
+    }
+
+    await prisma.promotionCampaign.update({
+      where: { id: campaignId },
+      data: {
+        status,
+        metadata: buildPromotionCampaignMetadata(adminNote, adminUser, existingCampaign.metadata),
+      },
+    });
+
+    await recordAdminAudit(adminUser, {
+      action: 'promotion.status.updated',
+      entityType: 'PromotionCampaign' as AuditLogEntityType,
+      entityId: existingCampaign.id,
+      entityLabel: existingCampaign.name,
+      summary: `${getAdminActorLabel(adminUser)} changed promotion campaign ${existingCampaign.name} to ${status}.`,
+      details: {
+        previousStatus: existingCampaign.status,
+        nextStatus: status,
+        adminNote,
+      },
+    });
+
+    revalidateAdminPanel();
+  } catch (error) {
+    redirectWithResult(redirectTo, {
+      tone: 'error',
+      message:
+        error instanceof Error ? error.message : 'Failed to update the promotion campaign.',
+    });
+  }
+
+  redirectWithResult(redirectTo, {
+    tone: 'success',
+    message: 'Promotion campaign updated successfully.',
+  });
+}
+
