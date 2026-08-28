@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { SUPPORT_EMAIL, buildSupportMailto } from '@/lib/support'
+import { LEGAL_DOCUMENTS, buildLegalDocumentPath } from '@/lib/legal'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -21,7 +22,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#0F2651] py-16 text-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="col-span-1 md:col-span-2">
             <Image
               src="/logo2.svg"
@@ -91,15 +92,43 @@ export default function Footer() {
               </li>
             </ul>
           </div>
+          <div>
+            <h3 className="mb-4 text-lg font-semibold">Legal</h3>
+            <ul className="space-y-2 text-slate-400">
+              <li>
+                <Link href="/legal" className="transition-colors hover:text-white">
+                  Legal Centre
+                </Link>
+              </li>
+              {LEGAL_DOCUMENTS.map((document) => (
+                <li key={document.slug}>
+                  <Link
+                    href={buildLegalDocumentPath(document.slug)}
+                    className="transition-colors hover:text-white">
+                    {document.shortTitle}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
         <div className="mt-8 flex flex-col items-center justify-between border-t border-slate-800 pt-8 md:flex-row">
           <p className="text-slate-400">© {currentYear} Catcher. All rights reserved.</p>
-          <div className="mt-4 flex gap-4 md:mt-0">
+          <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 md:mt-0 md:justify-end">
             <Link href="/" className="text-slate-400 transition-colors hover:text-white">
               Home
             </Link>
             <Link href="/features" className="text-slate-400 transition-colors hover:text-white">
               Feature Overview
+            </Link>
+            <Link href="/legal/terms" className="text-slate-400 transition-colors hover:text-white">
+              Terms
+            </Link>
+            <Link href="/legal/privacy" className="text-slate-400 transition-colors hover:text-white">
+              Privacy
+            </Link>
+            <Link href="/legal/cookies" className="text-slate-400 transition-colors hover:text-white">
+              Cookies
             </Link>
             <a href={supportLink} className="text-slate-400 transition-colors hover:text-white">
               Support

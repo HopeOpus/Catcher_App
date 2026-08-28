@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { SignUp } from "@clerk/nextjs";
+import { AuthLegalNotice } from "@/components/auth-legal-notice";
 
 export default function SignUpPage() {
   return (
@@ -47,6 +48,8 @@ export default function SignUpPage() {
             }}
           />
         </div>
+
+        <AuthLegalNotice mode="signUp" />
       </div>
     </div>
   );

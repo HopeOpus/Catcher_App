@@ -112,6 +112,9 @@ export function Navigation() {
                     Stolen Items
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/legal">Legal Centre</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
 
                 <SignedOut>

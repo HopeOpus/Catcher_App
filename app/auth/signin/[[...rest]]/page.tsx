@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { SignIn } from "@clerk/nextjs";
+import { AuthLegalNotice } from "@/components/auth-legal-notice";
 
 export default function SignInPage() {
   return (
@@ -47,6 +48,8 @@ export default function SignInPage() {
             }}
           />
         </div>
+
+        <AuthLegalNotice mode="signIn" />
       </div>
     </div>
   );
