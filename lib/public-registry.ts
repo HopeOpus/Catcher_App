@@ -42,7 +42,12 @@ export type PublicRegistryItem = {
   dateRegistered: string;
   propertyImageUrl: string | null;
   ownerName: string;
-  ownerEmail: string;
+  /**
+   * Owner contact details are only serialized for signed-in viewers. For
+   * anonymous visitors these are null so the public registry cannot be used to
+   * harvest registrant contact data.
+   */
+  ownerEmail: string | null;
   ownerPhone: string | null;
   ownerImageUrl: string | null;
   isReportedStolen: boolean;
@@ -64,6 +69,8 @@ export type PublicRegistrySearchState = {
 
 export type PublicRegistrySearchResult = {
   items: PublicRegistryItem[];
+  /** True when the viewer is signed in and owner contact details were included. */
+  canViewOwnerContact: boolean;
   totalCount: number;
   totalPages: number;
   page: number;

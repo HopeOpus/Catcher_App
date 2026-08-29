@@ -22,4 +22,22 @@ export const LEGAL_FACTS = {
   maxUploadSizeLabel: "5 MB",
   allowedUploadTypesLabel: "JPEG, PNG, GIF and WebP images",
   publicLookupRateLimitLabel: "120 requests every 5 minutes per visitor",
+
+  /**
+   * Wallet and referral values. Mirrored from lib/wallet.ts and
+   * lib/referrals.ts rather than imported, so the legal pages do not pull the
+   * Prisma client into the module graph of every page that renders the footer.
+   * Keep in sync if those constants change.
+   */
+  walletCreditValueLabel: "NGN 1",
+  walletCreditExpiryLabel: "12 months from the date it is credited",
+  walletExpiryWarningDays: 30,
+  walletTransferMinCredits: 1,
+  walletTransferMaxCredits: 500,
+  walletTransferDailyLimitCredits: 1000,
+  referralMilestones: [
+    { target: 5, rewardCredits: 7, badge: null },
+    { target: 20, rewardCredits: 30, badge: null },
+    { target: 100, rewardCredits: 200, badge: "Catcher Ambassador" },
+  ],
 } as const;

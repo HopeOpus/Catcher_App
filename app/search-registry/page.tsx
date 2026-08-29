@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
 import { Navigation } from "@/components/navigation";
 import Footer from "@/components/footer";
 import { isDatabaseConnectionError } from "@/lib/database-errors";
@@ -75,12 +76,16 @@ export default async function SearchRegistryPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const state = parsePublicRegistrySearchParams(resolvedSearchParams);
   const hasSearched = state.q.length > 0;
+  const { userId } = await auth();
+  const canViewOwnerContact = Boolean(userId);
   let result = null;
   let isRegistryUnavailable = false;
 
   if (hasSearched) {
     try {
-      result = await getPublicRegistrySearchResult(state);
+      result = await getPublicRegistrySearchResult(state, {
+        canViewOwnerContact,
+      });
     } catch (error) {
       if (isDatabaseConnectionError(error)) {
         console.error("Public registry database connection error:", error);
@@ -92,6 +97,7 @@ export default async function SearchRegistryPage({
   } else {
     result = {
       items: [],
+      canViewOwnerContact,
       totalCount: 0,
       totalPages: 0,
       page: 1,
@@ -114,8 +120,8 @@ export default async function SearchRegistryPage({
                 Search <span className="text-[#36689e]">Registry</span>
               </h1>
               <p className="mx-auto max-w-3xl text-xl text-slate-600">
-                Search Catcher&apos;s public property registry to verify ownership details,
-                contact the registrant, and quickly see whether a property has been reported stolen.
+                Search Catcher&apos;s public property registry to verify a registration,
+                check the registrant, and quickly see whether a property has been reported stolen.
               </p>
             </div>
 
@@ -148,9 +154,14 @@ export default async function SearchRegistryPage({
               Search <span className="text-[#36689e]">Registry</span>
             </h1>
             <p className="mx-auto max-w-3xl text-xl text-slate-600">
-              Search Catcher&apos;s public property registry to verify ownership details,
-              contact the registrant, and quickly see whether a property has been reported stolen.
+              Search Catcher&apos;s public property registry to verify a registration,
+              check the registrant, and quickly see whether a property has been reported stolen.
             </p>
+            {!canViewOwnerContact ? (
+              <p className="mx-auto mt-4 max-w-3xl text-sm text-slate-500">
+                Registrant contact details are shown to signed-in users only.
+              </p>
+            ) : null}
           </div>
 
           <RegistryExplorer result={result} hasSearched={hasSearched} />

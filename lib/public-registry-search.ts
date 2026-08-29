@@ -287,7 +287,10 @@ function buildPublicRegistryOrderBy(
   }
 }
 
-function mapRegistryProperty(property: RegistryPropertyRecord): PublicRegistryItem {
+function mapRegistryProperty(
+  property: RegistryPropertyRecord,
+  canViewOwnerContact: boolean,
+): PublicRegistryItem {
   const latestStolenReport = property.stolenReports[0] ?? null;
   const coverPhotoUrl = property.photoUrl
     ? normalizeStoredPhotoUrl(property.photoUrl)
@@ -305,8 +308,8 @@ function mapRegistryProperty(property: RegistryPropertyRecord): PublicRegistryIt
     dateRegistered: property.dateRegistered.toISOString(),
     propertyImageUrl: coverPhotoUrl,
     ownerName: property.user.name,
-    ownerEmail: property.user.email,
-    ownerPhone: property.user.phoneNumber ?? null,
+    ownerEmail: canViewOwnerContact ? property.user.email : null,
+    ownerPhone: canViewOwnerContact ? (property.user.phoneNumber ?? null) : null,
     ownerImageUrl: property.user.profileImageUrl
       ? normalizeStoredPhotoUrl(property.user.profileImageUrl)
       : null,
@@ -325,7 +328,9 @@ function mapRegistryProperty(property: RegistryPropertyRecord): PublicRegistryIt
 
 export async function getPublicRegistrySearchResult(
   state: PublicRegistrySearchState,
+  options: { canViewOwnerContact?: boolean } = {},
 ): Promise<PublicRegistrySearchResult> {
+  const canViewOwnerContact = options.canViewOwnerContact ?? false;
   await syncPropertyLifecycle(prisma);
 
   const where = buildPublicRegistryWhere(state);
@@ -378,12 +383,15 @@ export async function getPublicRegistrySearchResult(
           take: state.pageSize,
         });
 
-  const items = properties.map(mapRegistryProperty);
+  const items = properties.map((property) =>
+    mapRegistryProperty(property, canViewOwnerContact),
+  );
   const rangeStart = totalCount === 0 ? 0 : skip + 1;
   const rangeEnd = totalCount === 0 ? 0 : skip + items.length;
 
   return {
     items,
+    canViewOwnerContact,
     totalCount,
     totalPages,
     page,

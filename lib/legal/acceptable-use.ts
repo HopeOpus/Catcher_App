@@ -114,7 +114,7 @@ export const acceptableUsePolicy: LegalDocument = {
       blocks: [
         {
           kind: "paragraph",
-          text: "Signed-in users can perform registry lookups that return a registered owner's name, email address, phone number and, where supplied, National Identification Number and next-of-kin contact details. This capability exists for one reason: so that a finder, buyer or investigator can reach an owner about a specific item.",
+          text: "Anyone can search the public registry and see which named registrant holds a given item. Signing in additionally reveals that registrant's email address and phone number, and authenticated application lookups may return a National Identification Number and next-of-kin contact details. This capability exists for one reason: so that a finder, buyer or investigator can reach an owner about a specific item.",
         },
         {
           kind: "paragraph",

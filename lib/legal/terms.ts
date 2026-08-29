@@ -32,7 +32,7 @@ export const termsOfService: LegalDocument = {
         },
         {
           kind: "paragraph",
-          text: "These Terms should be read together with our Privacy Policy, Acceptable Use Policy, Stolen Property Reporting & Verification Policy, Billing, Coverage & Refund Policy, and Cookie & Tracking Policy. Together they make up the full agreement between you and Catcher.",
+          text: "These Terms should be read together with our Privacy Policy, Acceptable Use Policy, Stolen Property Reporting & Verification Policy, Billing, Coverage & Refund Policy, Wallet & Referral Rewards Policy, and Cookie & Tracking Policy. Together they make up the full agreement between you and Catcher.",
         },
       ],
     },
@@ -302,7 +302,11 @@ export const termsOfService: LegalDocument = {
         },
         {
           kind: "paragraph",
-          text: `We apply rate limits to public lookups (currently around ${LEGAL_FACTS.publicLookupRateLimitLabel}) to keep the database available and to prevent bulk harvesting. You must not scrape, mirror, resell or systematically extract the database.`,
+          text: "Catcher also publishes a registry search covering registered items. Anyone can search it to confirm that an item is registered, see the registrant's name, and see whether the item carries a theft report. Registrant email addresses and phone numbers are shown only to signed-in users, and are subject to the restrictions in our Acceptable Use Policy.",
+        },
+        {
+          kind: "paragraph",
+          text: `We apply rate limits to public lookups (currently around ${LEGAL_FACTS.publicLookupRateLimitLabel}) to keep these surfaces available and to prevent bulk harvesting. You must not scrape, mirror, resell or systematically extract the stolen items database or the registry.`,
         },
       ],
     },

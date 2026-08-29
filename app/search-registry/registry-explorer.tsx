@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LoaderCircle,
+  Lock,
   Mail,
   MapPin,
   Phone,
@@ -603,26 +604,52 @@ export function RegistryExplorer({
                       </div>
 
                       <div className="mt-5 space-y-3 text-sm text-slate-600">
-                        <a
-                          href={`mailto:${item.ownerEmail}`}
-                          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-[#36689e]/40 hover:text-[#0F2651]"
-                        >
-                          <Mail className="h-4 w-4 flex-shrink-0 text-[#36689e]" />
-                          <span className="truncate">{item.ownerEmail}</span>
-                        </a>
-                        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                          <Phone className="h-4 w-4 flex-shrink-0 text-[#36689e]" />
-                          {item.ownerPhone ? (
-                            <a
-                              href={`tel:${item.ownerPhone}`}
-                              className="truncate transition-colors hover:text-[#0F2651]"
-                            >
-                              {item.ownerPhone}
-                            </a>
-                          ) : (
-                            <span className="truncate">Phone number not available</span>
-                          )}
-                        </div>
+                        {result.canViewOwnerContact ? (
+                          <>
+                            {item.ownerEmail ? (
+                              <a
+                                href={`mailto:${item.ownerEmail}`}
+                                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-[#36689e]/40 hover:text-[#0F2651]"
+                              >
+                                <Mail className="h-4 w-4 flex-shrink-0 text-[#36689e]" />
+                                <span className="truncate">{item.ownerEmail}</span>
+                              </a>
+                            ) : null}
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                              <Phone className="h-4 w-4 flex-shrink-0 text-[#36689e]" />
+                              {item.ownerPhone ? (
+                                <a
+                                  href={`tel:${item.ownerPhone}`}
+                                  className="truncate transition-colors hover:text-[#0F2651]"
+                                >
+                                  {item.ownerPhone}
+                                </a>
+                              ) : (
+                                <span className="truncate">Phone number not available</span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="flex items-start gap-2">
+                              <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#36689e]" />
+                              <div>
+                                <p className="font-medium text-[#0F2651]">
+                                  Contact details hidden
+                                </p>
+                                <p className="mt-1 text-xs leading-6 text-slate-500">
+                                  Sign in to see the registrant email and phone number.
+                                </p>
+                                <Link
+                                  href="/auth/signin"
+                                  className="mt-2 inline-block text-xs font-semibold text-[#36689e] transition-colors hover:text-[#0F2651]"
+                                >
+                                  Sign in to view
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-5 space-y-3">

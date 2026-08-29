@@ -9,11 +9,13 @@ import {
   Calendar,
   CheckCircle2,
   ExternalLink,
+  Lock,
   Mail,
   MapPin,
   Phone,
   ShieldCheck,
 } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "@/components/navigation";
@@ -161,6 +163,8 @@ export default async function RegistryPropertyDetailsPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const registryState = parsePublicRegistrySearchParams(resolvedSearchParams);
   const backToRegistryHref = buildPublicRegistryHref(registryState);
+  const { userId } = await auth();
+  const canViewOwnerContact = Boolean(userId);
 
   let property = null;
 
@@ -369,35 +373,55 @@ export default async function RegistryPropertyDetailsPage({
                         {property.user.name}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <a
-                        href={`mailto:${property.user.email}`}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-colors hover:bg-white"
-                      >
-                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          <Mail className="h-4 w-4 text-[#36689e]" />
-                          Email
-                        </span>
-                        <p className="mt-2 break-all text-sm font-medium text-[#0F2651]">
-                          {property.user.email}
-                        </p>
-                      </a>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          <Phone className="h-4 w-4 text-[#36689e]" />
-                          Phone
-                        </span>
-                        <p className="mt-2 text-sm font-medium text-[#0F2651]">
-                          {property.user.phoneNumber ? (
-                            <a href={`tel:${property.user.phoneNumber}`}>
-                              {property.user.phoneNumber}
-                            </a>
-                          ) : (
-                            "Phone number not available"
-                          )}
-                        </p>
+                    {canViewOwnerContact ? (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <a
+                          href={`mailto:${property.user.email}`}
+                          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-colors hover:bg-white"
+                        >
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <Mail className="h-4 w-4 text-[#36689e]" />
+                            Email
+                          </span>
+                          <p className="mt-2 break-all text-sm font-medium text-[#0F2651]">
+                            {property.user.email}
+                          </p>
+                        </a>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <Phone className="h-4 w-4 text-[#36689e]" />
+                            Phone
+                          </span>
+                          <p className="mt-2 text-sm font-medium text-[#0F2651]">
+                            {property.user.phoneNumber ? (
+                              <a href={`tel:${property.user.phoneNumber}`}>
+                                {property.user.phoneNumber}
+                              </a>
+                            ) : (
+                              "Phone number not available"
+                            )}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <Lock className="h-4 w-4 text-[#36689e]" />
+                          Contact details hidden
+                        </span>
+                        <p className="mt-2 text-sm leading-7 text-slate-600">
+                          Catcher shows registrant email and phone number to signed-in
+                          users only, so the public registry cannot be used to harvest
+                          contact data.
+                        </p>
+                        <Link
+                          href="/auth/signin"
+                          className="mt-3 inline-block text-sm font-semibold text-[#36689e] transition-colors hover:text-[#0F2651]"
+                        >
+                          Sign in to contact the registrant
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

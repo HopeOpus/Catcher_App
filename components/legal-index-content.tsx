@@ -11,6 +11,7 @@ import {
   Scale,
   ShieldAlert,
   Siren,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LEGAL_DOCUMENTS, buildLegalDocumentPath } from "@/lib/legal";
@@ -26,6 +27,7 @@ const DOCUMENT_ICONS: Record<string, typeof FileText> = {
   "acceptable-use": ShieldAlert,
   "stolen-reports": Siren,
   billing: CreditCard,
+  "wallet-referrals": Wallet,
   cookies: Cookie,
 };
 
@@ -86,6 +88,14 @@ const QUICK_ANSWERS = [
     question: "What are the rules on using owner contact details?",
     href: "/legal/acceptable-use#owner-data",
   },
+  {
+    question: "Do my Catcher Security Credits expire?",
+    href: "/legal/wallet-referrals#expiry",
+  },
+  {
+    question: "When does a referral actually qualify for a reward?",
+    href: "/legal/wallet-referrals#referral-programme",
+  },
 ];
 
 export function LegalIndexContent() {
@@ -130,8 +140,8 @@ export function LegalIndexContent() {
               The documents
             </h2>
             <p className="mt-4 text-lg text-slate-600">
-              Six documents, each covering one part of the relationship. Together they
-              form the full agreement between you and Catcher.
+              Each one covers a different part of the relationship. Together they form
+              the full agreement between you and Catcher.
             </p>
           </div>
 

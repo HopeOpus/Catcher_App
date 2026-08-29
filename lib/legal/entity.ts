@@ -4,18 +4,15 @@ import { SUPPORT_EMAIL } from "@/lib/support";
  * Single source of truth for the legal identity that appears across every
  * Catcher legal document. Update these values once and every document,
  * heading and contact block follows.
- *
- * TODO(legal): replace the placeholder registration and address values with
- * the details on the Catcher certificate of incorporation before publishing.
  */
 export const LEGAL_ENTITY = {
   tradingName: "Catcher",
-  legalName: "Catcher Technologies Limited",
-  registrationNumber: "RC — (to be confirmed)",
-  registeredAddress: "Lagos, Nigeria (full registered address to be confirmed)",
+  legalName: "Catcher Global Technology Limited",
+  registrationNumber: "RC 8343759",
+  registeredAddress: "Abuja, Nigeria",
   country: "Federal Republic of Nigeria",
-  websiteDomain: "catcher.com.ng",
-  websiteUrl: "https://www.catcher.com.ng",
+  websiteDomain: "catchersecurities.com",
+  websiteUrl: "https://www.catchersecurities.com",
   supportEmail: SUPPORT_EMAIL,
   privacyEmail: SUPPORT_EMAIL,
   legalEmail: SUPPORT_EMAIL,

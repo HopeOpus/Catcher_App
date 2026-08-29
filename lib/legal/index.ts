@@ -4,6 +4,7 @@ import { cookiePolicy } from "@/lib/legal/cookies";
 import { privacyPolicy } from "@/lib/legal/privacy";
 import { stolenReportingPolicy } from "@/lib/legal/stolen-reports";
 import { termsOfService } from "@/lib/legal/terms";
+import { walletPolicy } from "@/lib/legal/wallet";
 import type { LegalDocument } from "@/lib/legal/types";
 
 export { LEGAL_ENTITY, LEGAL_EFFECTIVE_DATE, LEGAL_LAST_UPDATED, LEGAL_VERSION } from "@/lib/legal/entity";
@@ -19,6 +20,7 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
   acceptableUsePolicy,
   stolenReportingPolicy,
   billingPolicy,
+  walletPolicy,
   cookiePolicy,
 ] as const;
 
