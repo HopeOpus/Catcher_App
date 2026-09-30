@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Catcher web app
 
-## Getting Started
+Catcher is a property registry: owners register valuables, anyone can verify an item in the public registry, and owners can report theft. This repository is the web app and the API the Catcher mobile app calls.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router), React 19, Tailwind 4 + shadcn/ui, Clerk (auth), Prisma 7 on Neon Postgres, Paystack (payments), Cloudinary (uploads), Resend (email), Vercel (hosting).
+
+## Local setup
 
 ```bash
+npm install                 # also runs prisma generate
+cp .env.example .env.local  # fill in the values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Point `DATABASE_URL` at a development database (a Neon branch works well), never at production.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | What it does |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run typecheck` / `npm run lint` / `npm test` | Checks that CI runs on every PR |
+| `npm run db:migrate` | Create and apply a migration against your dev database |
+| `npm run db:migrate:deploy` | Apply pending migrations (production) |
+| `npm run db:migrate:status` | Show which migrations a database has |
+| `npm run db:seed` | Seed admin users from `ADMIN_EMAILS` |
+| `npm run cron:setup` | Register cron-job.org jobs that call `/api/internal/cron/*` |
 
-## Learn More
+## Database migrations
 
-To learn more about Next.js, take a look at the following resources:
+Schema changes go through versioned migrations in `prisma/migrations`. Do not use `prisma db push` against shared databases.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### One-time baseline for an existing database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The production database was created before migrations existed. `0_init` describes that schema, so mark it applied instead of running it:
 
-## Deploy on Vercel
+```bash
+DATABASE_URL=<production url> npx prisma migrate resolve --applied 0_init
+DATABASE_URL=<production url> npm run db:migrate:deploy
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+After that, every deploy that adds a migration needs `npm run db:migrate:deploy` run against production before the new code goes live. Migrations in this repo are written to be additive so the old code keeps working while they apply.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+GitHub Actions (`.github/workflows/deploy-vercel.yml`) runs typecheck, lint, tests and build on every PR. PRs get a Vercel preview deployment; pushes to `main` deploy to production.
+
+## Where things live
+
+- `app/` — pages and API routes (`app/api/*` is shared with the mobile app, which authenticates with a Clerk Bearer token)
+- `lib/` — domain logic: checkout, coverage lifecycle, wallet, referrals, businesses, legal documents
+- `components/` — UI; `components/ui` holds shadcn/ui primitives
+- `prisma/` — schema, migrations and seed
+- `tests/` — Vitest unit tests
