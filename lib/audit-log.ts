@@ -19,6 +19,7 @@ export type RecordAuditLogInput = {
   stolenReportId?: string | null;
   coverageId?: string | null;
   catalogItemId?: string | null;
+  businessId?: string | null;
   details?: Prisma.InputJsonValue | null;
 };
 
@@ -40,6 +41,7 @@ export async function recordAuditLog(
       stolenReportId: input.stolenReportId ?? null,
       coverageId: input.coverageId ?? null,
       catalogItemId: input.catalogItemId ?? null,
+      businessId: input.businessId ?? null,
       details:
         input.details === undefined
           ? undefined

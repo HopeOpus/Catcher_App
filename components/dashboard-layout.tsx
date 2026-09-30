@@ -4,34 +4,89 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
-import { Menu, X, Home, Building2, CreditCard, LogOut, AlertTriangle, User, Bell, ReceiptText } from 'lucide-react';
+import { Menu, X, Home, Building2, CreditCard, LogOut, AlertTriangle, User, Bell, ReceiptText, Briefcase, Users } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
 import { ProfileCompletionModal } from '@/components/profile-completion-modal';
+import { AccountSwitcher } from '@/components/business/account-switcher';
+import {
+  ACCOUNT_CHANGED_EVENT,
+  type AccountContextResponse,
+} from '@/lib/business/account-context-types';
 import {
   PROFILE_UPDATED_EVENT,
   type UserProfileStatus,
 } from '@/lib/profile';
 
-const navigationItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/properties', label: 'Registered Properties', icon: Building2 },
-  { href: '/dashboard/stolen-reports', label: 'Stolen Reports', icon: AlertTriangle },
-  { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: CreditCard },
-  { href: '/dashboard/receipts', label: 'Billing History', icon: ReceiptText },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { href: '/dashboard/profile', label: 'Profile', icon: User },
-];
+type NavigationItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function buildNavigationItems(context: AccountContextResponse | null): NavigationItem[] {
+  const isBusiness = context?.active.kind === 'business';
+
+  return [
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    {
+      href: '/dashboard/properties',
+      label: isBusiness ? 'Business Assets' : 'Registered Properties',
+      icon: Building2,
+    },
+    { href: '/dashboard/stolen-reports', label: 'Stolen Reports', icon: AlertTriangle },
+    { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: CreditCard },
+    { href: '/dashboard/receipts', label: 'Billing History', icon: ReceiptText },
+    ...(isBusiness
+      ? [
+          { href: '/dashboard/business', label: 'Business Profile', icon: Briefcase },
+          { href: '/dashboard/business/team', label: 'Team', icon: Users },
+        ]
+      : []),
+    { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+    { href: '/dashboard/profile', label: 'My Profile', icon: User },
+  ];
+}
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [profileStatus, setProfileStatus] = React.useState<UserProfileStatus | null>(null);
   const [isProfileModalDismissed, setIsProfileModalDismissed] = React.useState(false);
+  const [accountContext, setAccountContext] = React.useState<AccountContextResponse | null>(null);
   const { signOut, isLoaded, isSignedIn } = useAuth();
   const pathname = usePathname();
+  const navigationItems = buildNavigationItems(accountContext);
+
+  React.useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadAccountContext = async () => {
+      try {
+        const response = await fetch('/api/account-context', { cache: 'no-store' });
+
+        if (response.ok && isActive) {
+          setAccountContext((await response.json()) as AccountContextResponse);
+        }
+      } catch (error) {
+        console.error('Failed to load account context:', error);
+      }
+    };
+
+    void loadAccountContext();
+    window.addEventListener(ACCOUNT_CHANGED_EVENT, loadAccountContext);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener(ACCOUNT_CHANGED_EVENT, loadAccountContext);
+    };
+  }, [isLoaded, isSignedIn, pathname]);
 
   React.useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -125,6 +180,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <h1 className="text-lg font-semibold text-[#0F2651]">Catcher</h1>
                     <UserButton afterSignOutUrl="/" />
                   </div>
+                  <div className="border-b p-4">
+                    <AccountSwitcher
+                      context={accountContext}
+                      onSwitched={() => setIsMobileMenuOpen(false)}
+                    />
+                  </div>
                   <nav className="flex-1 overflow-y-auto py-4">
                     <NavigationMenu className="flex flex-col space-y-2">
                       <NavigationMenuList>
@@ -195,6 +256,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <UserButton afterSignOutUrl="/" />
           </div>
           
+          <div className="border-b border-gray-200 p-4">
+            <AccountSwitcher context={accountContext} />
+          </div>
+
           <nav className="flex-1 overflow-y-auto py-6">
             <div className="space-y-2 px-4">
               {navigationItems.map((item) => (
