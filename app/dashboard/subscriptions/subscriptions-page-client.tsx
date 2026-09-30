@@ -280,6 +280,9 @@ type SubscriptionsPageClientProps = {
   summary: PropertyPlanDashboardSummary;
   hasUsedFreePlan: boolean;
   planDefinitions: PropertyPlanDefinition[];
+  /** False for business viewers, who can see billing but not pay. */
+  canPurchase: boolean;
+  businessName: string | null;
 };
 
 export default function SubscriptionsPageClient({
@@ -288,6 +291,8 @@ export default function SubscriptionsPageClient({
   summary,
   hasUsedFreePlan,
   planDefinitions,
+  canPurchase,
+  businessName,
 }: SubscriptionsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -731,7 +736,7 @@ export default function SubscriptionsPageClient({
       hasUsedFreePlan,
     });
 
-    if (actionState.disabled) {
+    if (actionState.disabled || !canPurchase) {
       return;
     }
 
@@ -1334,13 +1339,20 @@ export default function SubscriptionsPageClient({
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 lg:max-w-xs">
                       <p className="font-semibold text-[#0F2651]">Charged in NGN</p>
                       <p className="mt-1">
-                        Monthly registrations are billed at ₦800 and yearly registrations
-                        are billed at ₦5,000 for every property.
+                        {planDefinitions
+                          .filter((plan) => plan.priceNgnKobo > 0)
+                          .map((plan) => `${plan.name} is ${formatNgnFromKobo(plan.priceNgnKobo)}`)
+                          .join(' and ')}{' '}
+                        {businessName ? 'per business asset.' : 'per property.'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                  <div
+                    className={`mt-4 grid grid-cols-1 gap-3 ${
+                      planDefinitions.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-3'
+                    }`}
+                  >
                     {planDefinitions.map((plan) => {
                       const isSelected = selectedPlan.code === plan.code;
                       const previewActionState = getPrimaryActionState({
@@ -1439,8 +1451,14 @@ export default function SubscriptionsPageClient({
                     <Button
                       type="button"
                       disabled={
+                        !canPurchase ||
                         selectedActionState.disabled ||
                         submittingPropertyId === selectedProperty.propertyId
+                      }
+                      title={
+                        canPurchase
+                          ? undefined
+                          : 'Viewers cannot pay for business subscriptions. Ask an owner, admin or member.'
                       }
                       className="bg-[#36689e] text-white hover:bg-[#0F2651]"
                       onClick={() => {

@@ -45,8 +45,8 @@ import {
   type PropertyTypeValue,
 } from '@/lib/catcher-domain';
 import {
-  PROPERTY_PLAN_DEFINITIONS,
   formatNgnFromKobo,
+  type PropertyPlanDefinition,
 } from '@/lib/property-plans';
 
 interface PropertyPhoto {
@@ -68,6 +68,8 @@ export interface Property {
   description: string;
   dateRegistered: string;
   status: PropertyStatusValue;
+  assetTag: string;
+  location: string;
   photos: PropertyPhoto[];
 }
 
@@ -78,8 +80,20 @@ interface PropertyDraft {
   description: string;
   status: PropertyStatusValue;
   planCode: PropertyPlanCodeValue | '';
+  assetTag: string;
+  location: string;
   photos: PropertyPhoto[];
 }
+
+/** What the active account may do on this page, resolved on the server. */
+export type PropertiesAccountContext = {
+  kind: 'personal' | 'business';
+  businessName: string | null;
+  canRegister: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canReportStolen: boolean;
+};
 
 type PageNotice = {
   tone: 'success' | 'info' | 'warning' | 'error';
@@ -248,6 +262,7 @@ function DeleteConfirmModal({
 
 function PropertyDetailsModal({
   property,
+  permissions,
   onClose,
   onEdit,
   onReportStolen,
@@ -255,6 +270,7 @@ function PropertyDetailsModal({
   onOpenPreview,
 }: {
   property: Property | null;
+  permissions: Pick<PropertiesAccountContext, 'canEdit' | 'canDelete' | 'canReportStolen'>;
   onClose: () => void;
   onEdit: (property: Property) => void;
   onReportStolen: (property: Property) => void;
@@ -278,6 +294,16 @@ function PropertyDetailsModal({
             <p className="mt-1 break-all text-sm text-gray-600">
               {property.type} · {property.serialNumber}
             </p>
+            {property.assetTag || property.location ? (
+              <p className="mt-1 text-sm text-slate-500">
+                {[
+                  property.assetTag ? `Asset tag ${property.assetTag}` : null,
+                  property.location || null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={property.status === 'Active'
@@ -381,32 +407,38 @@ function PropertyDetailsModal({
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                className="border-[#36689e] text-[#0F2651]"
-                onClick={() => onEdit(property)}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Property
-              </Button>
-              <Button
-                type="button"
-                className="bg-red-600 text-white hover:bg-red-700"
-                onClick={() => onReportStolen(property)}
-              >
-                <AlertCircle className="mr-2 h-4 w-4" />
-                Report Stolen
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-red-600 hover:text-red-700"
-                onClick={() => onDelete(property)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
+              {permissions.canEdit ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-[#36689e] text-[#0F2651]"
+                  onClick={() => onEdit(property)}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Property
+                </Button>
+              ) : null}
+              {permissions.canReportStolen ? (
+                <Button
+                  type="button"
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={() => onReportStolen(property)}
+                >
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                  Report Stolen
+                </Button>
+              ) : null}
+              {permissions.canDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => onDelete(property)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -417,12 +449,17 @@ function PropertyDetailsModal({
 type PropertiesPageClientProps = {
   initialProperties: Property[];
   hasUsedFreePlan: boolean;
+  planDefinitions: PropertyPlanDefinition[];
+  account: PropertiesAccountContext;
 };
 
 export default function PropertiesPageClient({
   initialProperties,
   hasUsedFreePlan,
+  planDefinitions,
+  account,
 }: PropertiesPageClientProps) {
+  const isBusinessAccount = account.kind === 'business';
   const searchParams = useSearchParams();
   const checkoutState = searchParams.get('checkout');
   const checkoutReference = searchParams.get('reference');
@@ -433,6 +470,8 @@ export default function PropertiesPageClient({
     description: '',
     status: 'Active',
     planCode: '' as PropertyPlanCodeValue | '',
+    assetTag: '',
+    location: '',
     photos: [] as PropertyPhoto[]
   };
   const [properties, setProperties] = useState<Property[]>(initialProperties);
@@ -682,6 +721,8 @@ export default function PropertiesPageClient({
       description: property.description,
       status: property.status,
       planCode: '' as PropertyPlanCodeValue | '',
+      assetTag: property.assetTag,
+      location: property.location,
       photos: property.photos.map((photo) => ({
         ...photo,
         uploaded: true,
@@ -700,7 +741,8 @@ export default function PropertiesPageClient({
       setPageError('');
       const response = await fetch('/api/properties');
       if (response.ok) {
-        const data = await response.json();
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : (payload?.data ?? []);
         // Transform database data to frontend format
         const transformed = data.map((p: { 
           id: string; 
@@ -712,6 +754,8 @@ export default function PropertiesPageClient({
           status: PropertyStatusValue;
           photo_url?: string;
           photo_urls?: string[];
+          asset_tag?: string | null;
+          location?: string | null;
         }) => {
           const photoUrls =
             Array.isArray(p.photo_urls) && p.photo_urls.length > 0
@@ -728,6 +772,8 @@ export default function PropertiesPageClient({
             description: p.description || '',
             dateRegistered: new Date(p.date_registered).toISOString().split('T')[0],
             status: p.status,
+            assetTag: p.asset_tag ?? '',
+            location: p.location ?? '',
             photos: photoUrls.map((photoUrl, index) => {
               const normalizedUrl = normalizeStoredPhotoUrl(photoUrl);
 
@@ -758,7 +804,7 @@ export default function PropertiesPageClient({
   };
 
   const selectedPlan = !editingPropertyId && newProperty.planCode
-    ? PROPERTY_PLAN_DEFINITIONS.find((plan) => plan.code === newProperty.planCode) ?? null
+    ? planDefinitions.find((plan) => plan.code === newProperty.planCode) ?? null
     : null;
   const freePlanLimitReached = !editingPropertyId && hasUsedFreePlanState;
   const visibleProperties = useMemo(() => {
@@ -783,6 +829,8 @@ export default function PropertiesPageClient({
         property.serialNumber,
         property.description,
         property.status,
+        property.assetTag,
+        property.location,
       ]
         .join(' ')
         .toLowerCase()
@@ -970,6 +1018,9 @@ export default function PropertiesPageClient({
         serial_number: newProperty.serialNumber,
         description: newProperty.description,
         status: newProperty.status,
+        ...(isBusinessAccount
+          ? { asset_tag: newProperty.assetTag, location: newProperty.location }
+          : {}),
         photo_urls: uploadedPhotos
           .map((photo) => photo.url)
           .filter((photoUrl): photoUrl is string => Boolean(photoUrl)),
@@ -1272,19 +1323,24 @@ export default function PropertiesPageClient({
         <div>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-[#0F2651] mb-2">Registered Properties</h1>
+              <h1 className="text-3xl font-bold text-[#0F2651] mb-2">
+                {isBusinessAccount ? 'Business Assets' : 'Registered Properties'}
+              </h1>
               <p className="max-w-3xl text-gray-600">
-                Upload a property, choose a subscription, complete payment if needed,
-                and manage your registered items here.
+                {isBusinessAccount
+                  ? `Register and manage the assets protected under ${account.businessName ?? 'your business'}. Every member of the business sees the same records.`
+                  : 'Upload a property, choose a subscription, complete payment if needed, and manage your registered items here.'}
               </p>
             </div>
-            <Button 
-              onClick={startCreateProperty}
-              className="bg-[#36689e] hover:bg-[#0F2651] text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Upload Property
-            </Button>
+            {account.canRegister ? (
+              <Button
+                onClick={startCreateProperty}
+                className="bg-[#36689e] hover:bg-[#0F2651] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isBusinessAccount ? 'Register Asset' : 'Upload Property'}
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -1307,7 +1363,9 @@ export default function PropertiesPageClient({
             <CardHeader>
               <CardTitle className="text-[#0F2651]">Search & Filters</CardTitle>
               <CardDescription>
-                Search by property name, serial number, description, or filter by type and status.
+                {isBusinessAccount
+                  ? 'Search by name, serial number, asset tag, location or description, or filter by type and status.'
+                  : 'Search by property name, serial number, description, or filter by type and status.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_220px_220px]">
@@ -1381,7 +1439,9 @@ export default function PropertiesPageClient({
                     </p>
                     <p className="mt-2 font-semibold text-[#0F2651]">Choose a subscription</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Select the Free, Monthly, or Yearly subscription for this upload.
+                      {isBusinessAccount
+                        ? 'Select the Business Monthly or Business Yearly subscription for this asset.'
+                        : 'Select the Free, Monthly, or Yearly subscription for this upload.'}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
@@ -1453,6 +1513,36 @@ export default function PropertiesPageClient({
                     <option value="Stolen">Stolen</option>
                   </select>
                 </div>
+                {isBusinessAccount ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="assetTag">
+                        Asset Tag <span className="font-normal text-slate-500">(optional)</span>
+                      </Label>
+                      <Input
+                        id="assetTag"
+                        placeholder="e.g., FLEET-0042"
+                        maxLength={100}
+                        value={newProperty.assetTag}
+                        onChange={(e) => setNewProperty({ ...newProperty, assetTag: e.target.value })}
+                      />
+                      <p className="text-xs text-slate-500">Your internal inventory or fixed-asset number.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">
+                        Branch or Location <span className="font-normal text-slate-500">(optional)</span>
+                      </Label>
+                      <Input
+                        id="location"
+                        placeholder="e.g., Lekki Head Office"
+                        maxLength={255}
+                        value={newProperty.location}
+                        onChange={(e) => setNewProperty({ ...newProperty, location: e.target.value })}
+                      />
+                      <p className="text-xs text-slate-500">Where this asset is kept or assigned.</p>
+                    </div>
+                  </>
+                ) : null}
                 <div className="space-y-2">
                   <Label htmlFor="photos">Photo Upload</Label>
                   <div className="space-y-4">
@@ -1715,7 +1805,7 @@ export default function PropertiesPageClient({
                       </div>
                     ) : null}
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                      {PROPERTY_PLAN_DEFINITIONS.map((plan) => {
+                      {planDefinitions.map((plan) => {
                         const isSelected = newProperty.planCode === plan.code;
                         const isDisabled =
                           plan.code === 'free' && hasUsedFreePlanState;
@@ -1900,20 +1990,43 @@ export default function PropertiesPageClient({
               
               <CardContent className="space-y-5">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Type
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[#0F2651]">{property.type}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Photos
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[#0F2651]">
-                      {property.photos.length}
-                    </p>
-                  </div>
+                  {isBusinessAccount ? (
+                    <>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Asset Tag
+                        </p>
+                        <p className="mt-1 truncate font-mono text-sm font-medium text-[#0F2651]">
+                          {property.assetTag || '—'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Location
+                        </p>
+                        <p className="mt-1 truncate text-sm font-medium text-[#0F2651]">
+                          {property.location || '—'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Type
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-[#0F2651]">{property.type}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Photos
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-[#0F2651]">
+                          {property.photos.length}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -1936,15 +2049,17 @@ export default function PropertiesPageClient({
                       <Eye className="h-4 w-4 mr-1" />
                       View
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-center border-slate-300 text-slate-700"
-                      onClick={() => startEditingProperty(property)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
+                    {account.canEdit ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-center border-slate-300 text-slate-700"
+                        onClick={() => startEditingProperty(property)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    ) : null}
                     <Button
                       asChild
                       variant="outline"
@@ -1956,28 +2071,32 @@ export default function PropertiesPageClient({
                         Details
                       </Link>
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="justify-center border-red-200 text-red-600 hover:text-red-700"
-                      onClick={() => {
-                        setSelectedProperty(property);
-                        setReportStolenModalOpen(true);
-                      }}
-                    >
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      Report Stolen
-                    </Button>
+                    {account.canReportStolen ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-center border-red-200 text-red-600 hover:text-red-700"
+                        onClick={() => {
+                          setSelectedProperty(property);
+                          setReportStolenModalOpen(true);
+                        }}
+                      >
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        Report Stolen
+                      </Button>
+                    ) : null}
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="justify-center text-gray-500 hover:text-red-600"
-                    onClick={() => handleDeleteClick(property)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+                  {account.canDelete ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="justify-center text-gray-500 hover:text-red-600"
+                      onClick={() => handleDeleteClick(property)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -2065,6 +2184,7 @@ export default function PropertiesPageClient({
         <PropertyDetailsModal
           property={viewingProperty}
           onClose={() => setViewingProperty(null)}
+          permissions={account}
           onEdit={(property) => startEditingProperty(property)}
           onReportStolen={(property) => {
             setViewingProperty(null);

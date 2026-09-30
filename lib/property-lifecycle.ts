@@ -14,6 +14,7 @@ type PropertyWithCoverages = Property & {
 
 type SyncPropertyLifecycleOptions = {
   userId?: string;
+  businessId?: string;
   propertyId?: string;
   now?: Date;
 };
@@ -149,6 +150,7 @@ export async function syncPropertyLifecycle(
   const properties = await db.property.findMany({
     where: {
       ...(options.userId ? { userId: options.userId } : {}),
+      ...(options.businessId ? { businessId: options.businessId } : {}),
       ...(options.propertyId ? { id: options.propertyId } : {}),
     },
     include: {

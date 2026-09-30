@@ -17,6 +17,7 @@ export type CreateNotificationInput = {
   coverageId?: string | null;
   stolenReportId?: string | null;
   paymentEventLogId?: string | null;
+  businessId?: string | null;
   payload?: Prisma.InputJsonValue | null;
 };
 
@@ -36,6 +37,7 @@ export async function createNotification(
       coverageId: input.coverageId ?? null,
       stolenReportId: input.stolenReportId ?? null,
       paymentEventLogId: input.paymentEventLogId ?? null,
+      businessId: input.businessId ?? null,
       payload:
         input.payload === undefined
           ? undefined

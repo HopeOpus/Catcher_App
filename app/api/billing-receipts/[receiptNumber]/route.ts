@@ -5,6 +5,11 @@ import {
 } from "@/lib/authenticated-user";
 import { normalizeStoredPhotoUrl } from "@/lib/catcher-domain";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import {
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 function serializePropertySummary(property: {
@@ -44,9 +49,9 @@ export async function GET(
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-    await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
-    });
+
+    const scope = await resolveAccountScope(authenticatedUser);
+    await syncPropertyLifecycle(prisma, lifecycleFilter(scope));
 
     const { receiptNumber } = await context.params;
 
@@ -57,7 +62,7 @@ export async function GET(
     const receipt = await prisma.billingReceipt.findFirst({
       where: {
         receiptNumber,
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
       },
       include: {
         property: {

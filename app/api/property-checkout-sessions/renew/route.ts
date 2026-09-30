@@ -8,6 +8,13 @@ import {
   getAuthenticatedAppUser,
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
+import {
+  canInScope,
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+  scopeBusinessId,
+} from "@/lib/account-scope";
 import { createPropertyCheckoutSession } from "@/lib/property-checkout";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
 import { prisma } from "@/lib/prisma";
@@ -53,15 +60,25 @@ export async function POST(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+
+    const scope = await resolveAccountScope(authenticatedUser, request);
+
+    if (!canInScope(scope, "purchase")) {
+      return NextResponse.json(
+        { error: "Your role in this business cannot renew properties." },
+        { status: 403 },
+      );
+    }
+
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId,
     });
 
     const property = await prisma.property.findFirst({
       where: {
         id: propertyId,
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
       },
       include: {
         photos: {
@@ -145,10 +162,13 @@ export async function POST(request: Request) {
 
     const checkout = await createPropertyCheckoutSession({
       authenticatedUser,
+      businessId: scopeBusinessId(scope),
       baseUrl: getRequestBaseUrl(request),
       returnPath: "/dashboard/subscriptions",
       existingPropertyId: property.id,
       name: property.name,
+      assetTag: property.assetTag,
+      location: property.location,
       type: property.type,
       serialNumber: property.serialNumber,
       description: property.description,
@@ -173,7 +193,10 @@ export async function POST(request: Request) {
         ? error.message
         : "Failed to start property renewal.";
     const statusCode =
-      errorMessage.includes("free property upload") ? 400 : 500;
+      errorMessage.includes("free property upload") ||
+      errorMessage.includes("free plan")
+        ? 400
+        : 500;
 
     return NextResponse.json(
       {

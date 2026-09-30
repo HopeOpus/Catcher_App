@@ -5,6 +5,10 @@ import {
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
 import { recordAuditLog } from "@/lib/audit-log";
+import {
+  BusinessOwnershipError,
+  reassignBusinessRecordsBeforeUserDeletion,
+} from "@/lib/business/member-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 export async function DELETE(request: Request) {
@@ -42,6 +46,8 @@ export async function DELETE(request: Request) {
         tx,
       );
 
+      await reassignBusinessRecordsBeforeUserDeletion(tx, authenticatedUser.userId);
+
       await tx.user.delete({
         where: { id: authenticatedUser.userId },
       });
@@ -68,6 +74,10 @@ export async function DELETE(request: Request) {
       message: "Account deleted successfully.",
     });
   } catch (error) {
+    if (error instanceof BusinessOwnershipError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
     console.error("Error deleting account:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Failed to delete account";

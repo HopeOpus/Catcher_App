@@ -133,8 +133,51 @@ enum NotificationType {
   CreditsExpiringSoon
   CreditsExpired
   AmbassadorBadgeEarned
+  BusinessVerified
+  BusinessVerificationRejected
+  BusinessMemberJoined
+  BusinessRoleChanged
+  BusinessMemberRemoved
 
   @@map("notification_type")
+}
+
+enum BusinessType {
+  businessName         @map("business_name")
+  privateLimited       @map("private_limited")
+  publicLimited        @map("public_limited")
+  incorporatedTrustees @map("incorporated_trustees")
+  partnership
+  other
+
+  @@map("business_type")
+}
+
+enum BusinessVerificationStatus {
+  unsubmitted
+  pending
+  verified
+  rejected
+
+  @@map("business_verification_status")
+}
+
+enum BusinessMemberRole {
+  owner
+  admin
+  member
+  viewer
+
+  @@map("business_member_role")
+}
+
+enum BusinessInviteStatus {
+  pending
+  accepted
+  revoked
+  expired
+
+  @@map("business_invite_status")
 }
 
 enum AuditLogEntityType {
@@ -148,6 +191,9 @@ enum AuditLogEntityType {
   ReferralProfile
   ReferralRelationship
   PromotionCampaign
+  Business
+  BusinessMember
+  BusinessInvite
 
   @@map("audit_log_entity_type")
 }
@@ -156,6 +202,7 @@ enum AdminNoteTargetType {
   User
   Property
   StolenReport
+  Business
 
   @@map("admin_note_target_type")
 }
@@ -254,13 +301,109 @@ model User {
   auditLogs              AuditLog[]                @relation("AuditLogActor")
   authoredAdminNotes     AdminNote[]               @relation("AdminNoteAuthor")
   receivedAdminNotes     AdminNote[]               @relation("AdminNoteTargetUser")
+  businessMemberships    BusinessMember[]
+  businessesCreated      Business[]                @relation("BusinessCreatedBy")
+  businessesVerified     Business[]                @relation("BusinessVerifiedBy")
+  businessInvitesSent    BusinessInvite[]          @relation("BusinessInviteSentBy")
+  businessInvitesAccepted BusinessInvite[]         @relation("BusinessInviteAcceptedBy")
 
   @@map("users")
+}
+
+/// A company or organisation account. Properties, coverages, receipts and
+/// stolen reports with a businessId belong to the business; their userId
+/// records the member who acted.
+model Business {
+  id                 String                     @id @db.VarChar(255)
+  slug               String                     @unique @db.VarChar(120)
+  name               String                     @db.VarChar(255)
+  businessType       BusinessType               @map("business_type")
+  registrationNumber String                     @map("registration_number") @db.VarChar(50)
+  taxId              String?                    @map("tax_id") @db.VarChar(50)
+  industry           String                     @db.VarChar(100)
+  email              String                     @db.VarChar(255)
+  phoneNumber        String                     @map("phone_number") @db.VarChar(50)
+  website            String?                    @db.VarChar(255)
+  addressLine        String                     @map("address_line") @db.VarChar(255)
+  city               String                     @db.VarChar(100)
+  state              String                     @db.VarChar(100)
+  country            String                     @default("Nigeria") @db.VarChar(100)
+  logoUrl            String?                    @map("logo_url") @db.VarChar(500)
+  cacDocumentUrl     String?                    @map("cac_document_url") @db.VarChar(500)
+  verificationStatus BusinessVerificationStatus @default(unsubmitted) @map("verification_status")
+  verificationNote   String?                    @map("verification_note") @db.Text
+  submittedAt        DateTime?                  @map("submitted_at") @db.Timestamptz
+  verifiedAt         DateTime?                  @map("verified_at") @db.Timestamptz
+  verifiedByUserId   String?                    @map("verified_by_user_id") @db.VarChar(255)
+  createdByUserId    String                     @map("created_by_user_id") @db.VarChar(255)
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  createdBy         User                      @relation("BusinessCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  verifiedBy        User?                     @relation("BusinessVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  members           BusinessMember[]
+  invites           BusinessInvite[]
+  properties        Property[]
+  propertyCoverages PropertyCoverage[]
+  checkoutSessions  PropertyCheckoutSession[]
+  billingReceipts   BillingReceipt[]
+  stolenReports     StolenReport[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  adminNotes        AdminNote[]
+
+  @@index([registrationNumber])
+  @@index([verificationStatus])
+  @@index([createdByUserId])
+  @@map("businesses")
+}
+
+model BusinessMember {
+  id         String             @id @db.VarChar(255)
+  businessId String             @map("business_id") @db.VarChar(255)
+  userId     String             @map("user_id") @db.VarChar(255)
+  role       BusinessMemberRole @default(member)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_members")
+}
+
+model BusinessInvite {
+  id               String               @id @db.VarChar(255)
+  businessId       String               @map("business_id") @db.VarChar(255)
+  email            String               @db.VarChar(255)
+  role             BusinessMemberRole   @default(member)
+  /// SHA-256 of the token sent by email; the raw token is never stored.
+  tokenHash        String               @unique @map("token_hash") @db.VarChar(64)
+  status           BusinessInviteStatus @default(pending)
+  invitedByUserId  String               @map("invited_by_user_id") @db.VarChar(255)
+  acceptedByUserId String?              @map("accepted_by_user_id") @db.VarChar(255)
+  expiresAt        DateTime             @map("expires_at") @db.Timestamptz
+  acceptedAt       DateTime?            @map("accepted_at") @db.Timestamptz
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedBy  User     @relation("BusinessInviteSentBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy User?    @relation("BusinessInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status])
+  @@index([email, status])
+  @@map("business_invites")
 }
 
 model Property {
   id                String                   @id @db.VarChar(255)
   userId            String                   @map("user_id") @db.VarChar(255)
+  businessId        String?                  @map("business_id") @db.VarChar(255)
+  assetTag          String?                  @map("asset_tag") @db.VarChar(100)
+  location          String?                  @db.VarChar(255)
   name              String                   @db.VarChar(255)
   type              PropertyType
   serialNumber      String                   @map("serial_number") @db.VarChar(255)
@@ -275,6 +418,7 @@ model Property {
   updatedAt         DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business          Business?                @relation(fields: [businessId], references: [id], onDelete: Restrict)
   checkoutSessions  PropertyCheckoutSession[]
   coverages         PropertyCoverage[]
   photos            PropertyPhoto[]
@@ -286,6 +430,8 @@ model Property {
   adminNotes        AdminNote[]
 
   @@index([userId])
+  @@index([businessId])
+  @@index([businessId, assetTag])
   @@index([serialNumber])
   @@index([type])
   @@index([status])
@@ -345,6 +491,7 @@ model PropertyCoverage {
   id                       String                 @id @db.VarChar(255)
   propertyId               String                 @map("property_id") @db.VarChar(255)
   userId                   String                 @map("user_id") @db.VarChar(255)
+  businessId               String?                @map("business_id") @db.VarChar(255)
   planCode                 PropertyPlanCode       @map("plan_code")
   planName                 String                 @map("plan_name") @db.VarChar(100)
   priceNgnKobo             Int                    @map("price_ngn_kobo")
@@ -364,6 +511,7 @@ model PropertyCoverage {
 
   property       Property                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business       Business?               @relation(fields: [businessId], references: [id], onDelete: Restrict)
   renewedFrom    PropertyCoverage?       @relation("PropertyCoverageRenewals", fields: [renewedFromId], references: [id], onDelete: SetNull)
   renewals       PropertyCoverage[]      @relation("PropertyCoverageRenewals")
   checkoutSession PropertyCheckoutSession?
@@ -379,16 +527,20 @@ model PropertyCoverage {
   @@index([graceEndsAt])
   @@index([userId, status])
   @@index([propertyId, status])
+  @@index([businessId, status])
   @@map("property_coverages")
 }
 
 model PropertyCheckoutSession {
   id                       String                        @id @db.VarChar(255)
   userId                   String                        @map("user_id") @db.VarChar(255)
+  businessId               String?                       @map("business_id") @db.VarChar(255)
   propertyId               String?                       @map("property_id") @db.VarChar(255)
   coverageId               String?                       @unique @map("coverage_id") @db.VarChar(255)
   returnPath               String?                       @map("return_path") @db.VarChar(255)
   name                     String                        @db.VarChar(255)
+  assetTag                 String?                       @map("asset_tag") @db.VarChar(100)
+  location                 String?                       @db.VarChar(255)
   type                     PropertyType
   serialNumber             String                        @map("serial_number") @db.VarChar(255)
   description              String?                       @db.Text
@@ -413,10 +565,12 @@ model PropertyCheckoutSession {
   coverage PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
   property Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business?         @relation(fields: [businessId], references: [id], onDelete: Restrict)
   billingReceipt BillingReceipt?
   qualifyingReferralRelationships ReferralRelationship[] @relation("ReferralQualificationCheckoutSession")
 
   @@index([userId])
+  @@index([businessId])
   @@index([propertyId])
   @@index([status])
   @@index([checkoutExpiresAt])
@@ -427,6 +581,7 @@ model PropertyCheckoutSession {
 model StolenReport {
   id           String             @id @db.VarChar(255)
   userId       String             @map("user_id") @db.VarChar(255)
+  businessId   String?            @map("business_id") @db.VarChar(255)
   propertyId   String             @map("property_id") @db.VarChar(255)
   propertyName String             @map("property_name") @db.VarChar(255)
   serialNumber String             @map("serial_number") @db.VarChar(255)
@@ -438,13 +593,15 @@ model StolenReport {
   createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   notifications Notification[]
   auditLogs     AuditLog[]
   adminNotes    AdminNote[]
 
   @@index([userId])
+  @@index([businessId])
   @@index([propertyId])
   @@index([serialNumber])
   @@index([status])
@@ -528,6 +685,7 @@ model Notification {
   coverageId        String?            @map("coverage_id") @db.VarChar(255)
   stolenReportId    String?            @map("stolen_report_id") @db.VarChar(255)
   paymentEventLogId String?            @map("payment_event_log_id") @db.VarChar(255)
+  businessId        String?            @map("business_id") @db.VarChar(255)
   payload           Json?
   createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -537,8 +695,10 @@ model Notification {
   coverage        PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
   stolenReport    StolenReport?    @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
   paymentEventLog PaymentEventLog? @relation(fields: [paymentEventLogId], references: [id], onDelete: SetNull)
+  business        Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([businessId])
   @@index([status])
   @@index([type])
   @@index([propertyId])
@@ -562,6 +722,7 @@ model AuditLog {
   stolenReportId String?           @map("stolen_report_id") @db.VarChar(255)
   coverageId    String?            @map("coverage_id") @db.VarChar(255)
   catalogItemId String?            @map("catalog_item_id") @db.VarChar(255)
+  businessId    String?            @map("business_id") @db.VarChar(255)
   details       Json?
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
 
@@ -569,8 +730,10 @@ model AuditLog {
   property     Property?        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   stolenReport StolenReport?    @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
   coverage     PropertyCoverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
+  business     Business?        @relation(fields: [businessId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId])
+  @@index([businessId])
   @@index([entityType])
   @@index([entityId])
   @@index([targetUserId])
@@ -589,6 +752,7 @@ model AdminNote {
   targetUserId  String?             @map("target_user_id") @db.VarChar(255)
   propertyId    String?             @map("property_id") @db.VarChar(255)
   stolenReportId String?            @map("stolen_report_id") @db.VarChar(255)
+  businessId    String?             @map("business_id") @db.VarChar(255)
   body          String              @db.Text
   isPinned      Boolean             @default(false) @map("is_pinned")
   createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
@@ -598,8 +762,10 @@ model AdminNote {
   targetUser   User?        @relation("AdminNoteTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
   property     Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   stolenReport StolenReport? @relation(fields: [stolenReportId], references: [id], onDelete: Cascade)
+  business     Business?    @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([authorUserId])
+  @@index([businessId])
   @@index([targetType])
   @@index([targetId])
   @@index([targetUserId])
@@ -615,6 +781,7 @@ model BillingReceipt {
   checkoutSessionId String?        @unique @map("checkout_session_id") @db.VarChar(255)
   paymentEventLogId String?        @unique @map("payment_event_log_id") @db.VarChar(255)
   userId           String          @map("user_id") @db.VarChar(255)
+  businessId       String?         @map("business_id") @db.VarChar(255)
   propertyId       String          @map("property_id") @db.VarChar(255)
   provider         PaymentProvider @default(Paystack)
   reference        String?         @db.VarChar(255)
@@ -633,9 +800,11 @@ model BillingReceipt {
   checkoutSession PropertyCheckoutSession? @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
   paymentEventLog PaymentEventLog?     @relation(fields: [paymentEventLogId], references: [id], onDelete: SetNull)
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business        Business?            @relation(fields: [businessId], references: [id], onDelete: Restrict)
   property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([businessId])
   @@index([propertyId])
   @@index([reference])
   @@map("billing_receipts")

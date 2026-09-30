@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   AlertCircle,
   Bell,
+  Building2,
   CheckCheck,
   CheckCircle2,
   Clock3,
@@ -12,6 +13,7 @@ import {
   Gift,
   Search,
   ShieldAlert,
+  ShieldCheck,
   Trophy,
   Users,
 } from 'lucide-react';
@@ -48,7 +50,12 @@ type NotificationTypeFilter =
   | 'CreditsTransferred'
   | 'CreditsExpiringSoon'
   | 'CreditsExpired'
-  | 'AmbassadorBadgeEarned';
+  | 'AmbassadorBadgeEarned'
+  | 'BusinessVerified'
+  | 'BusinessVerificationRejected'
+  | 'BusinessMemberJoined'
+  | 'BusinessRoleChanged'
+  | 'BusinessMemberRemoved';
 
 export type DashboardNotificationItem = {
   id: string;
@@ -104,7 +111,14 @@ function getNotificationIcon(type: DashboardNotificationItem['type']) {
     case 'CreditsTransferred':
       return Gift;
     case 'CreditsExpired':
+    case 'BusinessVerificationRejected':
       return AlertCircle;
+    case 'BusinessVerified':
+      return ShieldCheck;
+    case 'BusinessMemberJoined':
+    case 'BusinessRoleChanged':
+    case 'BusinessMemberRemoved':
+      return Building2;
     default:
       return Bell;
   }
@@ -142,6 +156,16 @@ function getTypeLabel(type: DashboardNotificationItem['type']) {
       return 'Credits Expired';
     case 'AmbassadorBadgeEarned':
       return 'Badge Earned';
+    case 'BusinessVerified':
+      return 'Business Verified';
+    case 'BusinessVerificationRejected':
+      return 'Verification Update';
+    case 'BusinessMemberJoined':
+      return 'Team Member Joined';
+    case 'BusinessRoleChanged':
+      return 'Role Changed';
+    case 'BusinessMemberRemoved':
+      return 'Team Update';
     default:
       return type;
   }
@@ -171,6 +195,14 @@ function getTypeTone(type: DashboardNotificationItem['type']) {
       return 'bg-fuchsia-100 text-fuchsia-800';
     case 'CreditsTransferred':
       return 'bg-orange-100 text-orange-800';
+    case 'BusinessVerified':
+      return 'bg-emerald-100 text-emerald-800';
+    case 'BusinessVerificationRejected':
+      return 'bg-red-100 text-red-800';
+    case 'BusinessMemberJoined':
+    case 'BusinessRoleChanged':
+    case 'BusinessMemberRemoved':
+      return 'bg-sky-100 text-sky-800';
     default:
       return 'bg-slate-100 text-slate-700';
   }
@@ -328,6 +360,10 @@ export default function NotificationsPageClient({
             <option value="PropertyArchived">Property archived</option>
             <option value="PropertyRestored">Property restored</option>
             <option value="StolenReportUpdated">Stolen report updated</option>
+            <option value="BusinessVerified">Business verified</option>
+            <option value="BusinessVerificationRejected">Business verification update</option>
+            <option value="BusinessMemberJoined">Team member joined</option>
+            <option value="BusinessRoleChanged">Role changed</option>
           </select>
         </CardContent>
       </Card>

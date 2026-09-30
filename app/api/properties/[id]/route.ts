@@ -5,6 +5,11 @@ import {
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import {
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 function serializeProperty(property: {
@@ -63,17 +68,19 @@ export async function GET(
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+
+    const scope = await resolveAccountScope(authenticatedUser);
     const { id } = await context.params;
 
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId: id,
     });
 
     const property = await prisma.property.findFirst({
       where: {
         id,
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         archivedAt: null,
       },
       include: {

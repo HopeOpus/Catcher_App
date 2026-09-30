@@ -10,6 +10,12 @@ import {
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import {
+  canInScope,
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 type StolenReportRecord = {
@@ -54,17 +60,19 @@ export async function GET(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+
+    const scope = await resolveAccountScope(authenticatedUser);
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get("propertyId");
 
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId: propertyId ?? undefined,
     });
 
     const reports = await prisma.stolenReport.findMany({
       where: {
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         property: {
           archivedAt: null,
         },
@@ -121,15 +129,25 @@ export async function POST(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+
+    const scope = await resolveAccountScope(authenticatedUser, request);
+
+    if (!canInScope(scope, "reportStolen")) {
+      return NextResponse.json(
+        { error: "Your role in this business cannot file stolen reports." },
+        { status: 403 },
+      );
+    }
+
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId,
     });
 
     const property = await prisma.property.findFirst({
       where: {
         id: propertyId,
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         archivedAt: null,
       },
     });
@@ -149,6 +167,7 @@ export async function POST(request: Request) {
       data: {
         id: randomUUID(),
         userId: authenticatedUser.userId,
+        businessId: property.businessId,
         propertyId: property.id,
         propertyName: property.name,
         serialNumber: property.serialNumber,

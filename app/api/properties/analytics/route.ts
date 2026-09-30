@@ -5,6 +5,11 @@ import {
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import {
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 function mapPropertyStatusToItemStatus(status: string) {
@@ -34,11 +39,13 @@ export async function GET() {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-    await syncPropertyLifecycle(prisma, { userId: authenticatedUser.userId });
+
+    const scope = await resolveAccountScope(authenticatedUser);
+    await syncPropertyLifecycle(prisma, lifecycleFilter(scope));
 
     const properties = await prisma.property.findMany({
       where: {
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         archivedAt: null,
       },
       include: {

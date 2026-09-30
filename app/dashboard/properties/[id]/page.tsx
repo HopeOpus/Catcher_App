@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -18,16 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  getAuthenticatedAppUser,
-  syncAuthenticatedAppUserRecord,
-} from '@/lib/authenticated-user';
+import { ownershipWhere } from '@/lib/account-scope';
 import { normalizeStoredPhotoUrl } from '@/lib/catcher-domain';
+import { getDashboardContext } from '@/lib/dashboard-context';
 import {
   getCoverageDisplayState,
   getCurrentAndUpcomingCoverage,
 } from '@/lib/property-coverage';
-import { syncPropertyLifecycle } from '@/lib/property-lifecycle';
 import { formatNgnFromKobo } from '@/lib/property-plans';
 import {
   buildPropertyVerificationPath,
@@ -102,24 +99,13 @@ function getPaymentStatusTone(status: string | null | undefined) {
 export default async function PropertyDetailsPage({
   params,
 }: PropertyDetailsPageProps) {
-  const authenticatedUser = await getAuthenticatedAppUser();
-
-  if (!authenticatedUser) {
-    redirect('/auth/signin');
-  }
-
-  await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
   const { id } = await params;
-
-  await syncPropertyLifecycle(prisma, {
-    userId: authenticatedUser.userId,
-    propertyId: id,
-  });
+  const { scope } = await getDashboardContext({ syncLifecycle: true, propertyId: id });
 
   const property = await prisma.property.findFirst({
     where: {
       id,
-      userId: authenticatedUser.userId,
+      ...ownershipWhere(scope),
     },
     include: {
       photos: {

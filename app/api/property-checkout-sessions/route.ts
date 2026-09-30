@@ -13,6 +13,11 @@ import {
   type PropertyCheckoutPaymentMethod,
 } from "@/lib/property-checkout";
 import { parseSubmittedPhotoUrls } from "@/lib/property-payload";
+import {
+  canInScope,
+  resolveAccountScope,
+  scopeBusinessId,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -20,6 +25,15 @@ export const runtime = "nodejs";
 function getRequestBaseUrl(request: Request): string {
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
+}
+
+function optionalText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, maxLength) : null;
 }
 
 function isPropertyCheckoutPaymentMethod(value: unknown): value is PropertyCheckoutPaymentMethod {
@@ -95,11 +109,23 @@ export async function POST(request: Request) {
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
 
+    const scope = await resolveAccountScope(authenticatedUser, request);
+
+    if (!canInScope(scope, "registerProperty") || !canInScope(scope, "purchase")) {
+      return NextResponse.json(
+        { error: "Your role in this business cannot register properties." },
+        { status: 403 },
+      );
+    }
+
     const checkout = await createPropertyCheckoutSession({
       authenticatedUser,
+      businessId: scopeBusinessId(scope),
       baseUrl: getRequestBaseUrl(request),
       returnPath: "/dashboard/properties",
       name,
+      assetTag: optionalText(body.asset_tag, 100),
+      location: optionalText(body.location, 255),
       type,
       serialNumber,
       description,
@@ -124,7 +150,8 @@ export async function POST(request: Request) {
     const lowerErrorMessage = errorMessage.toLowerCase();
     const statusCode =
       lowerErrorMessage.includes("free property upload") ||
-      lowerErrorMessage.includes("catcher security credits")
+      lowerErrorMessage.includes("free plan") ||
+      lowerErrorMessage.includes("catcher security credit")
         ? 400
         : 500;
 

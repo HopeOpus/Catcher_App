@@ -2,8 +2,14 @@ import type { PropertyPlanCodeValue } from "@/lib/catcher-domain";
 
 export const MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 80_000;
 export const YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 500_000;
+/** Business plans sit slightly above the personal prices. No free tier. */
+export const BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 100_000;
+export const BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO = 600_000;
 export const PROPERTY_PLAN_GRACE_PERIOD_DAYS = 7;
 export const FREE_PROPERTY_PLAN_LIFETIME_LIMIT = 1;
+
+/** Who a plan is sold to: an individual, or a business account. */
+export type PropertyPlanAudience = "personal" | "business";
 
 export type PropertyPlanDefinition = {
   code: PropertyPlanCodeValue;
@@ -46,17 +52,60 @@ export const PROPERTY_PLAN_DEFINITIONS: readonly PropertyPlanDefinition[] = [
   },
 ] as const;
 
-const PROPERTY_PLAN_MAP = new Map(
-  PROPERTY_PLAN_DEFINITIONS.map((plan) => [plan.code, plan]),
-);
+export const BUSINESS_PROPERTY_PLAN_DEFINITIONS: readonly PropertyPlanDefinition[] = [
+  {
+    code: "monthly",
+    name: "Business Monthly",
+    description:
+      "Per business asset: 30 days of active protection under your business name, followed by a 7-day grace period before archive.",
+    priceNgnKobo: BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
+    durationDays: 30,
+    buttonLabel: "Continue to Payment",
+  },
+  {
+    code: "yearly",
+    name: "Business Yearly",
+    description:
+      "Per business asset: 365 days of active protection under your business name, followed by a 7-day grace period before archive.",
+    priceNgnKobo: BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
+    durationDays: 365,
+    buttonLabel: "Continue to Payment",
+    badge: "Best value",
+  },
+] as const;
+
+const PROPERTY_PLAN_MAPS: Record<PropertyPlanAudience, Map<PropertyPlanCodeValue, PropertyPlanDefinition>> = {
+  personal: new Map(PROPERTY_PLAN_DEFINITIONS.map((plan) => [plan.code, plan])),
+  business: new Map(BUSINESS_PROPERTY_PLAN_DEFINITIONS.map((plan) => [plan.code, plan])),
+};
+
+export function getPropertyPlanDefinitions(
+  audience: PropertyPlanAudience = "personal",
+): readonly PropertyPlanDefinition[] {
+  return audience === "business"
+    ? BUSINESS_PROPERTY_PLAN_DEFINITIONS
+    : PROPERTY_PLAN_DEFINITIONS;
+}
+
+export function isPropertyPlanAvailable(
+  planCode: PropertyPlanCodeValue,
+  audience: PropertyPlanAudience = "personal",
+): boolean {
+  return PROPERTY_PLAN_MAPS[audience].has(planCode);
+}
 
 export function getPropertyPlanDefinition(
   planCode: PropertyPlanCodeValue,
+  audience: PropertyPlanAudience = "personal",
 ): PropertyPlanDefinition {
-  const plan = PROPERTY_PLAN_MAP.get(planCode);
+  const plan = PROPERTY_PLAN_MAPS[audience].get(planCode);
 
   if (!plan) {
-    throw new Error(`Unknown property plan: ${planCode}`);
+    throw new Error(
+      audience === "business" && planCode === "free"
+        ? "Business accounts do not include a free plan. Choose Monthly or Yearly."
+        : `Unknown property plan: ${planCode}`,
+    );
   }
 
   return plan;
