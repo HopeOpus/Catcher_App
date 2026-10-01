@@ -55,6 +55,31 @@ export const billingPolicy: LegalDocument = {
           ],
         },
         {
+          kind: "table",
+          caption: "Business accounts",
+          columns: ["Plan", "Price per asset", "Active coverage", "Grace period", "Notes"],
+          rows: [
+            [
+              "Business Monthly",
+              LEGAL_FACTS.businessMonthlyPrice,
+              `${LEGAL_FACTS.monthlyDurationDays} days`,
+              `${LEGAL_FACTS.gracePeriodDays} days`,
+              "Charged once per purchase; no free plan for business accounts",
+            ],
+            [
+              "Business Yearly",
+              LEGAL_FACTS.businessYearlyPrice,
+              `${LEGAL_FACTS.yearlyDurationDays} days`,
+              `${LEGAL_FACTS.gracePeriodDays} days`,
+              "Best value per day of coverage",
+            ],
+          ],
+        },
+        {
+          kind: "paragraph",
+          text: "Business coverage is billed to the business account. Any member allowed to make purchases can pay, and the receipt is issued in the business's name with its CAC number, address and, where provided, its Tax Identification Number. Catcher Security Credits cannot currently be used to pay for business coverage.",
+        },
+        {
           kind: "paragraph",
           text: `The free plan allows ${LEGAL_FACTS.freePlanLifetimeLimit} property registration per account, once, for the life of that account. Deleting the free property does not restore the allowance, and creating additional accounts to obtain more free registrations breaches our Acceptable Use Policy.`,
         },

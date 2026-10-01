@@ -127,13 +127,50 @@ export const termsOfService: LegalDocument = {
         },
         {
           kind: "paragraph",
-          text: "Catcher accounts are personal to you. You may not sell, rent, transfer or share your account with anyone else.",
+          text: "Catcher accounts are personal to you. You may not sell, rent, transfer or share your account with anyone else. To give colleagues access to company assets, use a business account (see the next section) rather than sharing a login.",
+        },
+      ],
+    },
+    {
+      id: "business-accounts",
+      heading: "6. Business accounts",
+      blocks: [
+        {
+          kind: "paragraph",
+          text: "You can register a business account for a company, business name, partnership or incorporated trustees registered with the Corporate Affairs Commission (CAC). A business account sits alongside your personal account; you switch between them in the dashboard.",
+        },
+        {
+          kind: "paragraph",
+          text: "By registering a business you confirm that you are authorised to act for it and that the business details and documents you provide are accurate. The person who registers the business becomes its first owner.",
+        },
+        {
+          kind: "definitions",
+          items: [
+            { term: "Owner", text: "Full control of the business account, including billing, team management and transferring ownership." },
+            { term: "Admin", text: "Manages assets, business details and team members, other than owners and other admins." },
+            { term: "Member", text: "Registers, edits and renews assets and files stolen reports for the business." },
+            { term: "Viewer", text: "Read-only access to the business's assets, reports and billing history." },
+          ],
+        },
+        {
+          kind: "paragraph",
+          text: `Property registered in a business account belongs to the business account, not to the member who registered it. If a member leaves or is removed, their access ends and the records they created stay with the business. Invitations to join a business are sent to a specific email address, can only be accepted by an account holding that address, and expire after ${LEGAL_FACTS.businessInviteTtlDays} days.`,
+        },
+        {
+          kind: "callout",
+          tone: "info",
+          title: "What the Verified Business badge means",
+          text: "When we verify a business, we have checked that the name, registration type and CAC number on the certificate it uploaded match the details it gave us. The badge is not an endorsement of the business, a credit or background check, or confirmation that the business owns any particular item.",
+        },
+        {
+          kind: "paragraph",
+          text: "A business can register and protect assets before verification is complete. We may refuse, suspend or remove verification, or suspend a business account, where documents appear false, the business is not authorised to use the name, or the account breaches these Terms. Owners are responsible for the actions of the people they invite.",
         },
       ],
     },
     {
       id: "registering-property",
-      heading: "6. Registering property",
+      heading: "7. Registering property",
       blocks: [
         {
           kind: "paragraph",
@@ -155,7 +192,7 @@ export const termsOfService: LegalDocument = {
         },
         {
           kind: "paragraph",
-          text: `Uploads are limited to ${LEGAL_FACTS.allowedUploadTypesLabel}, up to ${LEGAL_FACTS.maxUploadSizeLabel} per file. We may reject, remove or replace any upload that breaches these Terms or our Acceptable Use Policy.`,
+          text: `Uploads are limited to ${LEGAL_FACTS.allowedUploadTypesLabel}, up to ${LEGAL_FACTS.maxUploadSizeLabel} per file. CAC certificates uploaded for business verification may also be PDF files of up to 10 MB. We may reject, remove or replace any upload that breaches these Terms or our Acceptable Use Policy.`,
         },
         {
           kind: "paragraph",
@@ -165,7 +202,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "plans-and-coverage",
-      heading: "7. Plans, coverage and archiving",
+      heading: "8. Plans, coverage and archiving",
       blocks: [
         {
           kind: "paragraph",
@@ -216,7 +253,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "payments",
-      heading: "8. Payments",
+      heading: "9. Payments",
       blocks: [
         {
           kind: "paragraph",
@@ -238,7 +275,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "public-verification",
-      heading: "9. Public verification pages",
+      heading: "10. Public verification pages",
       blocks: [
         {
           kind: "paragraph",
@@ -262,7 +299,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "stolen-reports",
-      heading: "10. Reporting stolen property",
+      heading: "11. Reporting stolen property",
       blocks: [
         {
           kind: "paragraph",
@@ -290,7 +327,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "public-database",
-      heading: "11. The public stolen items database",
+      heading: "12. The public stolen items database",
       blocks: [
         {
           kind: "paragraph",
@@ -312,7 +349,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "acceptable-use",
-      heading: "12. Acceptable use",
+      heading: "13. Acceptable use",
       blocks: [
         {
           kind: "paragraph",
@@ -340,7 +377,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "your-content",
-      heading: "13. Your content and the licence you grant us",
+      heading: "14. Your content and the licence you grant us",
       blocks: [
         {
           kind: "paragraph",
@@ -358,7 +395,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "our-ip",
-      heading: "14. Our intellectual property",
+      heading: "15. Our intellectual property",
       blocks: [
         {
           kind: "paragraph",
@@ -372,7 +409,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "third-parties",
-      heading: "15. Third-party services",
+      heading: "16. Third-party services",
       blocks: [
         {
           kind: "paragraph",
@@ -386,7 +423,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "availability",
-      heading: "16. Availability and changes to the Service",
+      heading: "17. Availability and changes to the Service",
       blocks: [
         {
           kind: "paragraph",
@@ -400,7 +437,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "suspension",
-      heading: "17. Suspension and termination",
+      heading: "18. Suspension and termination",
       blocks: [
         {
           kind: "paragraph",
@@ -434,7 +471,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "disclaimers",
-      heading: "18. Disclaimers",
+      heading: "19. Disclaimers",
       blocks: [
         {
           kind: "paragraph",
@@ -462,7 +499,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "liability",
-      heading: "19. Limitation of liability",
+      heading: "20. Limitation of liability",
       blocks: [
         {
           kind: "paragraph",
@@ -490,7 +527,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "indemnity",
-      heading: "20. Indemnity",
+      heading: "21. Indemnity",
       blocks: [
         {
           kind: "paragraph",
@@ -500,7 +537,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "disputes",
-      heading: "21. Governing law and disputes",
+      heading: "22. Governing law and disputes",
       blocks: [
         {
           kind: "paragraph",
@@ -518,7 +555,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "changes",
-      heading: "22. Changes to these Terms",
+      heading: "23. Changes to these Terms",
       blocks: [
         {
           kind: "paragraph",
@@ -532,7 +569,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "general",
-      heading: "23. General",
+      heading: "24. General",
       blocks: [
         {
           kind: "definitions",
@@ -563,7 +600,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       id: "contact",
-      heading: "24. Contact us",
+      heading: "25. Contact us",
       blocks: [
         {
           kind: "paragraph",

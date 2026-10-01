@@ -61,6 +61,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/business" className="transition-colors hover:text-white">
+                  For Business
+                </Link>
+              </li>
+              <li>
                 <Link href="/search-registry" className="transition-colors hover:text-white">
                   Search Registry
                 </Link>

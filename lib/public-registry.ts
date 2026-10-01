@@ -42,6 +42,10 @@ export type PublicRegistryItem = {
   dateRegistered: string;
   propertyImageUrl: string | null;
   ownerName: string;
+  /** "business" when a business account owns the property. */
+  ownerKind: "personal" | "business";
+  /** True when the owning business passed CAC verification. */
+  ownerIsVerifiedBusiness: boolean;
   /**
    * Owner contact details are only serialized for signed-in viewers. For
    * anonymous visitors these are null so the public registry cannot be used to

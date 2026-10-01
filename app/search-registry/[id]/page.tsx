@@ -32,6 +32,7 @@ import {
   resolveRateLimitIdentifierFromHeaders,
 } from "@/lib/rate-limit";
 import { buildPropertyVerificationPath } from "@/lib/property-public-verification";
+import { VerifiedBusinessMark } from "@/components/business/verification-badge";
 import {
   buildPublicRegistryHref,
   parsePublicRegistrySearchParams,
@@ -187,6 +188,15 @@ export default async function RegistryPropertyDetailsPage({
             profileImageUrl: true,
           },
         },
+        business: {
+          select: {
+            name: true,
+            email: true,
+            phoneNumber: true,
+            logoUrl: true,
+            verificationStatus: true,
+          },
+        },
         photos: {
           orderBy: { uploadedAt: "asc" },
         },
@@ -249,9 +259,28 @@ export default async function RegistryPropertyDetailsPage({
     property.photoUrl ? normalizeStoredPhotoUrl(property.photoUrl) : null,
     ...property.photos.map((photo) => normalizeStoredPhotoUrl(photo.fileUrl)),
   ].filter((url, index, collection): url is string => Boolean(url) && collection.indexOf(url) === index);
-  const ownerImageUrl = property.user.profileImageUrl
-    ? normalizeStoredPhotoUrl(property.user.profileImageUrl)
-    : null;
+  // Business-owned assets present the business, not the member who
+  // registered them.
+  const owner = property.business
+    ? {
+        kind: "business" as const,
+        name: property.business.name,
+        email: property.business.email,
+        phoneNumber: property.business.phoneNumber,
+        isVerifiedBusiness: property.business.verificationStatus === "verified",
+      }
+    : {
+        kind: "personal" as const,
+        name: property.user.name,
+        email: property.user.email,
+        phoneNumber: property.user.phoneNumber,
+        isVerifiedBusiness: false,
+      };
+  const ownerImageUrl = property.business
+    ? property.business.logoUrl
+    : property.user.profileImageUrl
+      ? normalizeStoredPhotoUrl(property.user.profileImageUrl)
+      : null;
   const latestReport = property.stolenReports[0] ?? null;
   const isReportedStolen = property.stolenReports.length > 0;
   const verificationPath = property.publicVerification
@@ -350,33 +379,44 @@ export default async function RegistryPropertyDetailsPage({
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-                <h2 className="text-xl font-semibold text-[#0F2651]">Registrant Details</h2>
+                <h2 className="text-xl font-semibold text-[#0F2651]">
+                  {owner.kind === "business" ? "Registered Business" : "Registrant Details"}
+                </h2>
                 <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-start">
                   {ownerImageUrl ? (
                     <img
                       src={ownerImageUrl}
-                      alt={property.user.name}
-                      className="h-20 w-20 rounded-full object-cover"
+                      alt={owner.name}
+                      className={`h-20 w-20 object-cover ${owner.kind === "business" ? "rounded-2xl" : "rounded-full"}`}
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#36689e]/10 text-lg font-semibold text-[#0F2651]">
-                      {getOwnerInitials(property.user.name)}
+                    <div
+                      className={`flex h-20 w-20 items-center justify-center text-lg font-semibold ${
+                        owner.kind === "business"
+                          ? "rounded-2xl bg-[#0F2651] text-white"
+                          : "rounded-full bg-[#36689e]/10 text-[#0F2651]"
+                      }`}
+                    >
+                      {getOwnerInitials(owner.name)}
                     </div>
                   )}
 
                   <div className="min-w-0 flex-1 space-y-4">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Registrant Name
+                        {owner.kind === "business" ? "Business Name" : "Registrant Name"}
                       </p>
                       <p className="mt-1 text-xl font-semibold text-[#0F2651]">
-                        {property.user.name}
+                        {owner.name}
                       </p>
+                      {owner.isVerifiedBusiness ? (
+                        <VerifiedBusinessMark className="mt-2" />
+                      ) : null}
                     </div>
                     {canViewOwnerContact ? (
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <a
-                          href={`mailto:${property.user.email}`}
+                          href={`mailto:${owner.email}`}
                           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-colors hover:bg-white"
                         >
                           <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -384,7 +424,7 @@ export default async function RegistryPropertyDetailsPage({
                             Email
                           </span>
                           <p className="mt-2 break-all text-sm font-medium text-[#0F2651]">
-                            {property.user.email}
+                            {owner.email}
                           </p>
                         </a>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
@@ -393,9 +433,9 @@ export default async function RegistryPropertyDetailsPage({
                             Phone
                           </span>
                           <p className="mt-2 text-sm font-medium text-[#0F2651]">
-                            {property.user.phoneNumber ? (
-                              <a href={`tel:${property.user.phoneNumber}`}>
-                                {property.user.phoneNumber}
+                            {owner.phoneNumber ? (
+                              <a href={`tel:${owner.phoneNumber}`}>
+                                {owner.phoneNumber}
                               </a>
                             ) : (
                               "Phone number not available"

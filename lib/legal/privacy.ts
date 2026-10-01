@@ -76,6 +76,11 @@ export const privacyPolicy: LegalDocument = {
               "You, at sign-up and when completing your profile.",
             ],
             [
+              "Business account data",
+              "For business accounts: the business name, CAC registration type and number, Tax Identification Number, industry, business email, phone, website and head office address, logo, the CAC certificate you upload, the list of team members and their roles, and invitations sent to colleagues' email addresses.",
+              "You and other owners or admins of the business, when registering it, editing it and inviting members.",
+            ],
+            [
               "Next-of-kin data",
               "The name, email address and phone number of the person you nominate as your next of kin.",
               "You. You are responsible for having their permission before you supply it.",
@@ -287,6 +292,14 @@ export const privacyPolicy: LegalDocument = {
           tone: "info",
           title: "Registrant name is searchable; contact details are not",
           text: "The registry search is open to anyone, and a signed-out visitor can see that a named person registered a given item. Email addresses and phone numbers are withheld until a visitor signs in, so the registry cannot be used to harvest contact data anonymously. If you would rather your name did not appear in registry search results at all, contact us.",
+        },
+        {
+          kind: "paragraph",
+          text: "For assets owned by a business account, these surfaces show the business name, logo and whether the business is verified instead of the name of the member who registered the asset. Signed-in visitors see the business email and phone number rather than the member's. CAC certificates, Tax Identification Numbers and team member details are never published.",
+        },
+        {
+          kind: "paragraph",
+          text: "Inside a business account, every member can see the names and email addresses of the other members, and owners and admins can see pending invitations. Assets, stolen reports and receipts of the business are visible to all of its members according to their role.",
         },
         {
           kind: "callout",

@@ -24,6 +24,15 @@ type RegistryPropertyRecord = Prisma.PropertyGetPayload<{
         profileImageUrl: true;
       };
     };
+    business: {
+      select: {
+        name: true;
+        email: true;
+        phoneNumber: true;
+        logoUrl: true;
+        verificationStatus: true;
+      };
+    };
     photos: {
       select: {
         fileUrl: true;
@@ -307,12 +316,22 @@ function mapRegistryProperty(
     propertyDescription: property.description ?? "",
     dateRegistered: property.dateRegistered.toISOString(),
     propertyImageUrl: coverPhotoUrl,
-    ownerName: property.user.name,
-    ownerEmail: canViewOwnerContact ? property.user.email : null,
-    ownerPhone: canViewOwnerContact ? (property.user.phoneNumber ?? null) : null,
-    ownerImageUrl: property.user.profileImageUrl
-      ? normalizeStoredPhotoUrl(property.user.profileImageUrl)
+    // Business-owned assets show the business, never the member who
+    // registered them.
+    ownerName: property.business?.name ?? property.user.name,
+    ownerKind: property.business ? "business" : "personal",
+    ownerIsVerifiedBusiness: property.business?.verificationStatus === "verified",
+    ownerEmail: canViewOwnerContact
+      ? (property.business?.email ?? property.user.email)
       : null,
+    ownerPhone: canViewOwnerContact
+      ? (property.business?.phoneNumber ?? property.user.phoneNumber ?? null)
+      : null,
+    ownerImageUrl: property.business
+      ? property.business.logoUrl
+      : property.user.profileImageUrl
+        ? normalizeStoredPhotoUrl(property.user.profileImageUrl)
+        : null,
     isReportedStolen: property._count.stolenReports > 0,
     latestReportStatus: latestStolenReport
       ? getStolenReportStatusLabel(latestStolenReport.status)
@@ -350,6 +369,15 @@ export async function getPublicRegistrySearchResult(
                 email: true,
                 phoneNumber: true,
                 profileImageUrl: true,
+              },
+            },
+            business: {
+              select: {
+                name: true,
+                email: true,
+                phoneNumber: true,
+                logoUrl: true,
+                verificationStatus: true,
               },
             },
             photos: {
