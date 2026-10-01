@@ -41,6 +41,9 @@ export function Navigation() {
               <Link href="/#pricing">Pricing</Link>
             </Button>
             <Button asChild variant="ghost" className="text-slate-700 hover:text-slate-900">
+              <Link href="/business">For Business</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-slate-700 hover:text-slate-900">
               <Link href="/catcher-security-credit">Security Credits</Link>
             </Button>
             <Button
@@ -103,6 +106,9 @@ export function Navigation() {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/#pricing">Pricing</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/business">For Business</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/search-registry" className="font-medium text-[#36689e]">

@@ -15,8 +15,10 @@ export async function GET() {
         connection: process.env.DATABASE_URL ? "configured" : "not configured",
       },
       services: {
-        nextauth: process.env.NEXTAUTH_SECRET ? 'configured' : 'not configured',
-        cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? 'configured' : 'not configured'
+        clerk: process.env.CLERK_SECRET_KEY ? 'configured' : 'not configured',
+        cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? 'configured' : 'not configured',
+        paystack: process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_LIVE_SECRET_KEY || process.env.PAYSTACK_TEST_SECRET_KEY ? 'configured' : 'not configured',
+        resend: process.env.RESEND_API_KEY ? 'configured' : 'not configured'
       }
     };
 

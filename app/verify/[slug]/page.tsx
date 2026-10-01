@@ -18,6 +18,7 @@ import {
 } from "@/lib/rate-limit";
 import { buildPropertyVerificationUrl } from "@/lib/property-public-verification";
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, ShieldCheck } from "lucide-react";
+import { VerifiedBusinessMark } from "@/components/business/verification-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,9 @@ export default async function PropertyVerificationPage({
     include: {
       property: {
         include: {
+          business: {
+            select: { name: true, logoUrl: true, verificationStatus: true },
+          },
           photos: {
             orderBy: { uploadedAt: "asc" },
             take: 1,
@@ -245,6 +249,42 @@ export default async function PropertyVerificationPage({
                   </div>
                 ) : null}
               </div>
+
+              {verification.property.business ? (
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-[#0F2651]">Registered Business</h3>
+                  <div className="mt-5 flex items-center gap-4">
+                    {verification.property.business.logoUrl ? (
+                      <img
+                        src={verification.property.business.logoUrl}
+                        alt=""
+                        className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0F2651] text-lg font-semibold text-white">
+                        {verification.property.business.name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-lg font-semibold text-[#0F2651]">
+                        {verification.property.business.name}
+                      </p>
+                      {verification.property.business.verificationStatus === "verified" ? (
+                        <VerifiedBusinessMark className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-500">
+                          Business registration not yet verified by Catcher
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-5 text-sm leading-7 text-slate-600">
+                    {verification.property.business.verificationStatus === "verified"
+                      ? "Catcher has checked this business against its CAC registration. This asset is registered to the business, not to an individual."
+                      : "This asset is registered to a business account whose CAC documents have not been verified yet."}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
                 <h3 className="text-xl font-semibold text-[#0F2651]">Verification Guidance</h3>

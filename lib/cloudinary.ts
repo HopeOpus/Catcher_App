@@ -68,21 +68,44 @@ export function validateImageUploadFile(file: File): string | null {
   return null;
 }
 
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const PDF_MIME_TYPE = "application/pdf";
+
+/** Business verification documents: a PDF or a clear photo/scan. */
+export function validateDocumentUploadFile(file: File): string | null {
+  if (file.type !== PDF_MIME_TYPE && !ALLOWED_IMAGE_TYPES.has(file.type)) {
+    return "Upload a PDF, JPEG, PNG or WebP file.";
+  }
+
+  if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+    return "Document size must be 10MB or less.";
+  }
+
+  return null;
+}
+
 export async function uploadImageToCloudinary(
   file: File,
   uploadKey: string,
+  options: { subfolder?: string } = {},
 ): Promise<CloudinaryUploadResult> {
   const config = getCloudinaryConfig();
   const uniqueId = Math.random().toString(36).slice(2, 11);
   const publicId = `${uploadKey}_${uniqueId}`;
   const formData = new FormData();
+  // PDFs go up as raw files: Cloudinary blocks PDF delivery from the image
+  // pipeline on many accounts.
+  const resourceType = file.type === PDF_MIME_TYPE ? "raw" : "image";
 
   formData.append("file", file);
-  formData.append("folder", config.uploadFolder);
-  formData.append("public_id", publicId);
+  formData.append(
+    "folder",
+    options.subfolder ? `${config.uploadFolder}/${options.subfolder}` : config.uploadFolder,
+  );
+  formData.append("public_id", resourceType === "raw" ? `${publicId}.pdf` : publicId);
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${config.cloudName}/${resourceType}/upload`,
     {
       method: "POST",
       headers: {

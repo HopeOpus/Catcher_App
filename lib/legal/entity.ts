@@ -19,5 +19,5 @@ export const LEGAL_ENTITY = {
 } as const;
 
 export const LEGAL_EFFECTIVE_DATE = "28 August 2026";
-export const LEGAL_LAST_UPDATED = "28 August 2026";
-export const LEGAL_VERSION = "1.0";
+export const LEGAL_LAST_UPDATED = "1 October 2026";
+export const LEGAL_VERSION = "1.1";

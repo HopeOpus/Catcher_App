@@ -20,6 +20,7 @@ import {
   FREE_PROPERTY_PLAN_LIFETIME_LIMIT,
   buildPropertyCoverageWindow,
   getPropertyPlanDefinition,
+  isPropertyPlanAvailable,
 } from "@/lib/property-plans";
 import {
   sendPaymentFailureEmailForCheckoutSession,
@@ -48,10 +49,14 @@ export type PropertyCheckoutPaymentMethod = "cash" | "wallet";
 
 type CreatePropertyCheckoutInput = {
   authenticatedUser: AuthenticatedAppUser;
+  /** Set when a business member checks out on the business's behalf. */
+  businessId?: string | null;
   baseUrl: string;
   returnPath?: PropertyCheckoutReturnPath;
   existingPropertyId?: string | null;
   name: string;
+  assetTag?: string | null;
+  location?: string | null;
   type: PropertyTypeValue;
   serialNumber: string;
   description: string | null;
@@ -136,6 +141,7 @@ function buildPaystackReference(sessionId: string): string {
 function buildPaystackMetadata(options: {
   checkoutSessionId: string;
   userId: string;
+  businessId: string | null;
   planCode: PropertyPlanCodeValue;
   propertyName: string;
   returnPath: PropertyCheckoutReturnPath;
@@ -144,6 +150,7 @@ function buildPaystackMetadata(options: {
   return {
     draftId: options.checkoutSessionId,
     userId: options.userId,
+    businessId: options.businessId,
     planCode: options.planCode,
     propertyName: options.propertyName,
     returnPath: options.returnPath,
@@ -302,6 +309,9 @@ async function activatePropertyCheckoutSession(
       create: {
         id: propertyId,
         userId: session.userId,
+        businessId: session.businessId,
+        assetTag: session.assetTag,
+        location: session.location,
         name: session.name,
         type: session.type,
         serialNumber: session.serialNumber,
@@ -319,7 +329,12 @@ async function activatePropertyCheckoutSession(
           : undefined,
       },
       update: {
-        userId: session.userId,
+        // A business property keeps the member who first registered it, even
+        // when a different member renews it.
+        ...(session.businessId ? {} : { userId: session.userId }),
+        businessId: session.businessId,
+        assetTag: session.assetTag,
+        location: session.location,
         name: session.name,
         type: session.type,
         serialNumber: session.serialNumber,
@@ -342,6 +357,7 @@ async function activatePropertyCheckoutSession(
         id: coverageId,
         propertyId,
         userId: session.userId,
+        businessId: session.businessId,
         planCode: session.planCode,
         planName: session.planName,
         priceNgnKobo: session.priceNgnKobo,
@@ -363,6 +379,7 @@ async function activatePropertyCheckoutSession(
       update: {
         propertyId,
         userId: session.userId,
+        businessId: session.businessId,
         planCode: session.planCode,
         planName: session.planName,
         priceNgnKobo: session.priceNgnKobo,
@@ -443,6 +460,7 @@ async function activatePropertyCheckoutSession(
       checkoutSessionId,
       paymentEventLogId: linkedPaymentEventId,
       userId: session.userId,
+      businessId: session.businessId,
       propertyId,
       reference: settlement.paystackReference ?? session.paystackReference ?? null,
       planCode: session.planCode,
@@ -488,6 +506,7 @@ async function activatePropertyCheckoutSession(
       propertyId,
       coverageId,
       paymentEventLogId: linkedPaymentEventId,
+      businessId: session.businessId,
       payload: {
         reference: settlement.paystackReference ?? session.paystackReference ?? null,
         planName: session.planName,
@@ -512,10 +531,13 @@ async function activatePropertyCheckoutSession(
       propertyId,
       coverageId,
       paymentEventLogId: linkedPaymentEventId,
+      businessId: session.businessId,
     });
   }
 
-  if (newlyCompleted) {
+  // Referral rewards track individuals; business purchases do not qualify a
+  // member's personal referral.
+  if (newlyCompleted && !session.businessId) {
     try {
       await qualifyReferralForCompletedCheckout({
         referredUserId: session.userId,
@@ -553,6 +575,21 @@ async function markCheckoutSessionForReview(
 export async function createPropertyCheckoutSession(
   input: CreatePropertyCheckoutInput,
 ): Promise<CreatePropertyCheckoutResult> {
+  const businessId = input.businessId ?? null;
+  const audience = businessId ? "business" : "personal";
+
+  if (!isPropertyPlanAvailable(input.planCode, audience)) {
+    throw new Error(
+      "Business accounts do not include a free plan. Choose Monthly or Yearly to continue.",
+    );
+  }
+
+  if (businessId && input.paymentMethod === "wallet") {
+    throw new Error(
+      "Catcher Security Credit checkout is not yet available for business accounts. Pay with card or bank transfer instead.",
+    );
+  }
+
   if (input.planCode === "free") {
     const existingFreeCoverageCount = await prisma.propertyCoverage.count({
       where: {
@@ -568,7 +605,7 @@ export async function createPropertyCheckoutSession(
     }
   }
 
-  const plan = getPropertyPlanDefinition(input.planCode);
+  const plan = getPropertyPlanDefinition(input.planCode, audience);
   const paymentMethod = input.paymentMethod ?? "cash";
   const checkoutSessionId = randomUUID();
   const dateRegistered = input.dateRegistered ?? new Date();
@@ -581,9 +618,12 @@ export async function createPropertyCheckoutSession(
     data: {
       id: checkoutSessionId,
       userId: input.authenticatedUser.userId,
+      businessId,
       propertyId: input.existingPropertyId ?? null,
       returnPath,
       name: input.name,
+      assetTag: input.assetTag ?? null,
+      location: input.location ?? null,
       type: input.type,
       serialNumber: input.serialNumber,
       description: input.description,
@@ -710,6 +750,7 @@ export async function createPropertyCheckoutSession(
       metadata: buildPaystackMetadata({
         checkoutSessionId,
         userId: input.authenticatedUser.userId,
+        businessId,
         planCode: input.planCode,
         propertyName: input.name,
         returnPath,
@@ -745,6 +786,7 @@ export async function createPropertyCheckoutSession(
         metadata: buildPaystackMetadata({
           checkoutSessionId,
           userId: input.authenticatedUser.userId,
+          businessId,
           planCode: input.planCode,
           propertyName: input.name,
           returnPath,

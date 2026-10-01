@@ -1,18 +1,15 @@
-import { redirect } from 'next/navigation';
-import {
-  getAuthenticatedAppUser,
-  syncAuthenticatedAppUserRecord,
-} from '@/lib/authenticated-user';
-import { syncPropertyLifecycle } from '@/lib/property-lifecycle';
+import { canInScope, ownershipWhere, type AccountScope } from '@/lib/account-scope';
 import { normalizeStoredPhotoUrl } from '@/lib/catcher-domain';
+import { getDashboardContext, hasUsedFreePlan } from '@/lib/dashboard-context';
+import { getPropertyPlanDefinitions } from '@/lib/property-plans';
 import { prisma } from '@/lib/prisma';
 import PropertiesPageClient, {
   type Property as DashboardProperty,
 } from './properties-page-client';
 
-async function getInitialProperties(userId: string): Promise<DashboardProperty[]> {
+async function getInitialProperties(scope: AccountScope): Promise<DashboardProperty[]> {
   const properties = await prisma.property.findMany({
-    where: { userId, archivedAt: null },
+    where: { ...ownershipWhere(scope), archivedAt: null },
     include: {
       photos: {
         orderBy: { uploadedAt: 'asc' },
@@ -40,6 +37,8 @@ async function getInitialProperties(userId: string): Promise<DashboardProperty[]
       description: property.description ?? '',
       dateRegistered: property.dateRegistered.toISOString().split('T')[0],
       status: property.status,
+      assetTag: property.assetTag ?? '',
+      location: property.location ?? '',
       photos: orderedPhotoUrls.map((photoUrl, index) => ({
         id: `${property.id}-${index}`,
         preview: photoUrl,
@@ -51,31 +50,27 @@ async function getInitialProperties(userId: string): Promise<DashboardProperty[]
 }
 
 export default async function PropertiesPage() {
-  const authenticatedUser = await getAuthenticatedAppUser();
+  const context = await getDashboardContext({ syncLifecycle: true });
+  const { scope } = context;
 
-  if (!authenticatedUser) {
-    redirect('/auth/signin');
-  }
-
-  await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-  await syncPropertyLifecycle(prisma, {
-    userId: authenticatedUser.userId,
-  });
-
-  const [initialProperties, freePlanUsageCount] = await Promise.all([
-    getInitialProperties(authenticatedUser.userId),
-    prisma.propertyCoverage.count({
-      where: {
-        userId: authenticatedUser.userId,
-        planCode: 'free',
-      },
-    }),
+  const [initialProperties, usedFreePlan] = await Promise.all([
+    getInitialProperties(scope),
+    hasUsedFreePlan(context),
   ]);
 
   return (
     <PropertiesPageClient
       initialProperties={initialProperties}
-      hasUsedFreePlan={freePlanUsageCount > 0}
+      hasUsedFreePlan={usedFreePlan}
+      planDefinitions={[...getPropertyPlanDefinitions(context.audience)]}
+      account={{
+        kind: scope.kind,
+        businessName: scope.kind === 'business' ? scope.business.name : null,
+        canRegister: canInScope(scope, 'registerProperty') && canInScope(scope, 'purchase'),
+        canEdit: canInScope(scope, 'editProperty'),
+        canDelete: canInScope(scope, 'deleteProperty'),
+        canReportStolen: canInScope(scope, 'reportStolen'),
+      }}
     />
   );
 }

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { VerifiedBusinessMark } from "@/components/business/verification-badge";
 import { Input } from "@/components/ui/input";
 import { PROPERTY_TYPES } from "@/lib/catcher-domain";
 import {
@@ -586,20 +587,31 @@ export function RegistryExplorer({
                           <img
                             src={item.ownerImageUrl}
                             alt={item.ownerName}
-                            className="h-14 w-14 rounded-full object-cover ring-2 ring-white"
+                            className={`h-14 w-14 object-cover ring-2 ring-white ${
+                              item.ownerKind === 'business' ? 'rounded-2xl' : 'rounded-full'
+                            }`}
                           />
                         ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#36689e]/10 text-sm font-semibold text-[#0F2651] ring-2 ring-white">
+                          <div
+                            className={`flex h-14 w-14 items-center justify-center text-sm font-semibold ring-2 ring-white ${
+                              item.ownerKind === 'business'
+                                ? 'rounded-2xl bg-[#0F2651] text-white'
+                                : 'rounded-full bg-[#36689e]/10 text-[#0F2651]'
+                            }`}
+                          >
                             {getOwnerInitials(item.ownerName)}
                           </div>
                         )}
                         <div className="min-w-0">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Registrant
+                            {item.ownerKind === 'business' ? 'Registered business' : 'Registrant'}
                           </p>
                           <p className="mt-1 text-base font-semibold text-[#0F2651]">
                             {item.ownerName}
                           </p>
+                          {item.ownerIsVerifiedBusiness ? (
+                            <VerifiedBusinessMark className="mt-1.5" />
+                          ) : null}
                         </div>
                       </div>
 

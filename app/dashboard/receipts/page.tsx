@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation';
-import {
-  getAuthenticatedAppUser,
-  syncAuthenticatedAppUserRecord,
-} from '@/lib/authenticated-user';
+import { ownershipWhere, type AccountScope } from '@/lib/account-scope';
+import { getDashboardContext } from '@/lib/dashboard-context';
 import { formatNgnFromKobo } from '@/lib/property-plans';
 import { prisma } from '@/lib/prisma';
 import ReceiptsPageClient, {
@@ -15,11 +12,9 @@ type ReceiptsPageProps = {
   }>;
 };
 
-async function getReceipts(userId: string): Promise<BillingReceiptListItem[]> {
+async function getReceipts(scope: AccountScope): Promise<BillingReceiptListItem[]> {
   const receipts = await prisma.billingReceipt.findMany({
-    where: {
-      userId,
-    },
+    where: ownershipWhere(scope),
     include: {
       property: {
         select: {
@@ -57,15 +52,9 @@ async function getReceipts(userId: string): Promise<BillingReceiptListItem[]> {
 export default async function ReceiptsPage({
   searchParams,
 }: ReceiptsPageProps) {
-  const authenticatedUser = await getAuthenticatedAppUser();
-
-  if (!authenticatedUser) {
-    redirect('/auth/signin');
-  }
-
-  await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+  const { scope } = await getDashboardContext();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const receipts = await getReceipts(authenticatedUser.userId);
+  const receipts = await getReceipts(scope);
 
   return (
     <ReceiptsPageClient

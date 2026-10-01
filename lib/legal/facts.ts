@@ -1,4 +1,6 @@
 import {
+  BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
+  BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
   FREE_PROPERTY_PLAN_LIFETIME_LIMIT,
   MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
   PROPERTY_PLAN_GRACE_PERIOD_DAYS,
@@ -15,6 +17,10 @@ import {
 export const LEGAL_FACTS = {
   monthlyPrice: formatNgnFromKobo(MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO),
   yearlyPrice: formatNgnFromKobo(YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO),
+  businessMonthlyPrice: formatNgnFromKobo(BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO),
+  businessYearlyPrice: formatNgnFromKobo(BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO),
+  /** Mirrored from BUSINESS_INVITE_TTL_DAYS in lib/business/constants.ts. */
+  businessInviteTtlDays: 7,
   monthlyDurationDays: getPropertyPlanDefinition("monthly").durationDays ?? 30,
   yearlyDurationDays: getPropertyPlanDefinition("yearly").durationDays ?? 365,
   gracePeriodDays: PROPERTY_PLAN_GRACE_PERIOD_DAYS,

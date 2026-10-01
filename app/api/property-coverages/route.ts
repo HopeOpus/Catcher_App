@@ -5,6 +5,11 @@ import {
 } from "@/lib/authenticated-user";
 import { normalizeStoredPhotoUrl } from "@/lib/catcher-domain";
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import {
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -16,7 +21,9 @@ export async function GET(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-    await syncPropertyLifecycle(prisma, { userId: authenticatedUser.userId });
+
+    const scope = await resolveAccountScope(authenticatedUser);
+    await syncPropertyLifecycle(prisma, lifecycleFilter(scope));
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
@@ -24,7 +31,7 @@ export async function GET(request: Request) {
 
     const coverages = await prisma.propertyCoverage.findMany({
       where: {
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         ...(propertyId ? { propertyId } : {}),
       },
       include: {

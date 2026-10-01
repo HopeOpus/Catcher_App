@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import {
   AlertTriangle,
+  Briefcase,
   Building2,
   CreditCard,
   Home,
@@ -25,6 +26,7 @@ import { cn } from '@/lib/utils';
 const adminNavigationItems = [
   { href: '/admin', label: 'Overview', icon: Home },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/businesses', label: 'Businesses', icon: Briefcase },
   { href: '/admin/properties', label: 'Properties', icon: Building2 },
   { href: '/admin/stolen-reports', label: 'Stolen Reports', icon: AlertTriangle },
   { href: '/admin/catalog', label: 'Catalog', icon: Package },

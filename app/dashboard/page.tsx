@@ -28,6 +28,11 @@ import {
   getCoverageDisplayState,
   getCurrentAndUpcomingCoverage,
 } from '@/lib/property-coverage';
+import {
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+} from '@/lib/account-scope';
 import { syncPropertyLifecycle } from '@/lib/property-lifecycle';
 import { prisma } from '@/lib/prisma';
 
@@ -75,13 +80,12 @@ export default async function DashboardPage() {
     redirect('/admin');
   }
 
-  await syncPropertyLifecycle(prisma, {
-    userId: authenticatedUser.userId,
-  });
+  const scope = await resolveAccountScope(authenticatedUser);
+  await syncPropertyLifecycle(prisma, lifecycleFilter(scope));
 
   const [properties, openReports, freePlanUsageCount] = await Promise.all([
     prisma.property.findMany({
-      where: { userId: authenticatedUser.userId },
+      where: ownershipWhere(scope),
       include: {
         coverages: {
           orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }],
@@ -91,7 +95,7 @@ export default async function DashboardPage() {
     }),
     prisma.stolenReport.count({
       where: {
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         status: { not: 'Resolved' },
         property: {
           archivedAt: null,
@@ -106,7 +110,8 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const hasUsedFreePlan = freePlanUsageCount > 0;
+  // Businesses have no free plan, so treat it as already used.
+  const hasUsedFreePlan = scope.kind === 'business' || freePlanUsageCount > 0;
 
   const propertyCoverageSnapshots = properties.map((property) => {
     const { currentCoverage, upcomingCoverage } = getCurrentAndUpcomingCoverage(

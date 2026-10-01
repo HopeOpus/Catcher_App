@@ -17,10 +17,20 @@ import {
 import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
 import { parseSubmittedPhotoUrls } from "@/lib/property-payload";
 import { prisma } from "@/lib/prisma";
+import {
+  canInScope,
+  lifecycleFilter,
+  ownershipWhere,
+  resolveAccountScope,
+  type AccountScope,
+} from "@/lib/account-scope";
 
 type PropertyRecord = {
   id: string;
   userId: string;
+  businessId: string | null;
+  assetTag: string | null;
+  location: string | null;
   name: string;
   type: PropertyTypeValue;
   serialNumber: string;
@@ -48,6 +58,9 @@ function serializeProperty(property: PropertyRecord) {
   return {
     id: property.id,
     user_id: property.userId,
+    business_id: property.businessId,
+    asset_tag: property.assetTag,
+    location: property.location,
     name: property.name,
     type: property.type,
     serial_number: property.serialNumber,
@@ -66,15 +79,24 @@ function serializeProperty(property: PropertyRecord) {
   };
 }
 
+function normalizeOptionalText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, maxLength) : null;
+}
+
 function buildPropertyQueryFilters(
   searchParams: URLSearchParams,
-  userId: string,
+  scope: AccountScope,
 ): Prisma.PropertyWhereInput {
   const status = searchParams.get("status")?.trim() ?? "";
   const query = searchParams.get("query")?.trim() ?? "";
 
   const where: Prisma.PropertyWhereInput = {
-    userId,
+    ...ownershipWhere(scope),
     archivedAt: null,
   };
 
@@ -87,6 +109,8 @@ function buildPropertyQueryFilters(
       { name: { contains: query, mode: "insensitive" } },
       { serialNumber: { contains: query, mode: "insensitive" } },
       { description: { contains: query, mode: "insensitive" } },
+      { assetTag: { contains: query, mode: "insensitive" } },
+      { location: { contains: query, mode: "insensitive" } },
     ];
 
     if (isPropertyType(query)) {
@@ -112,14 +136,13 @@ export async function GET(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-    await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
-    });
+    const scope = await resolveAccountScope(authenticatedUser, request);
+    await syncPropertyLifecycle(prisma, lifecycleFilter(scope));
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
     const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
-    const where = buildPropertyQueryFilters(searchParams, authenticatedUser.userId);
+    const where = buildPropertyQueryFilters(searchParams, scope);
 
     const [count, properties] = await Promise.all([
       prisma.property.count({ where }),
@@ -229,15 +252,24 @@ export async function PUT(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+    const scope = await resolveAccountScope(authenticatedUser, request);
+
+    if (!canInScope(scope, "editProperty")) {
+      return NextResponse.json(
+        { error: "Your role in this business cannot edit properties." },
+        { status: 403 },
+      );
+    }
+
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId: id,
     });
 
     const existingProperty = await prisma.property.findFirst({
       where: {
         id,
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         archivedAt: null,
       },
       select: { id: true },
@@ -258,6 +290,12 @@ export async function PUT(request: Request) {
         name,
         type,
         serialNumber: serial_number,
+        ...(body.asset_tag !== undefined
+          ? { assetTag: normalizeOptionalText(body.asset_tag, 100) }
+          : {}),
+        ...(body.location !== undefined
+          ? { location: normalizeOptionalText(body.location, 255) }
+          : {}),
         description: description || null,
         dateRegistered: date_registered ? new Date(date_registered) : undefined,
         status: status || DEFAULT_PROPERTY_STATUS,
@@ -301,6 +339,15 @@ export async function DELETE(request: Request) {
     }
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+    const scope = await resolveAccountScope(authenticatedUser, request);
+
+    if (!canInScope(scope, "deleteProperty")) {
+      return NextResponse.json(
+        { error: "Only business owners and admins can delete properties." },
+        { status: 403 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -312,12 +359,12 @@ export async function DELETE(request: Request) {
     }
 
     await syncPropertyLifecycle(prisma, {
-      userId: authenticatedUser.userId,
+      ...lifecycleFilter(scope),
       propertyId: id,
     });
 
     const result = await prisma.property.deleteMany({
-      where: { id, userId: authenticatedUser.userId, archivedAt: null },
+      where: { id, ...ownershipWhere(scope), archivedAt: null },
     });
 
     if (result.count === 0) {

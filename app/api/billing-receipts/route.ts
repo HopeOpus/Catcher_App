@@ -3,6 +3,10 @@ import {
   getAuthenticatedAppUser,
   syncAuthenticatedAppUserRecord,
 } from "@/lib/authenticated-user";
+import {
+  ownershipWhere,
+  resolveAccountScope,
+} from "@/lib/account-scope";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -15,13 +19,15 @@ export async function GET(request: Request) {
 
     await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
 
+    const scope = await resolveAccountScope(authenticatedUser);
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
     const propertyId = searchParams.get("propertyId")?.trim() || undefined;
 
     const receipts = await prisma.billingReceipt.findMany({
       where: {
-        userId: authenticatedUser.userId,
+        ...ownershipWhere(scope),
         ...(propertyId ? { propertyId } : {}),
       },
       include: {

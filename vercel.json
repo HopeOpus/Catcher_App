@@ -1,8 +1,6 @@
 {
   "version": 2,
   "name": "catcher-app",
-  
-  
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
@@ -47,18 +45,5 @@
         }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/api/robots"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }

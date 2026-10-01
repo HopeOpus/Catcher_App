@@ -2,6 +2,7 @@ import { createClerkClient, verifyToken } from "@clerk/backend";
 import { headers } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { Prisma, UserRole } from "@prisma/client";
+import { migrateBusinessLinksToUser } from "@/lib/business/member-lifecycle";
 
 export type AuthenticatedAppUser = {
   userId: string;
@@ -19,6 +20,11 @@ type UserSyncClient = Pick<
   | "propertyCheckoutSession"
   | "subscription"
   | "stolenReport"
+  | "businessMember"
+  | "business"
+  | "businessInvite"
+  | "billingReceipt"
+  | "notification"
 >;
 
 function parseAdminEmails(value: string | undefined) {
@@ -409,6 +415,12 @@ export async function syncAuthenticatedAppUserRecord(
       where: { userId: existingUserByEmail.id },
       data: { userId: authenticatedUser.userId },
     });
+
+    await migrateBusinessLinksToUser(
+      db,
+      existingUserByEmail.id,
+      authenticatedUser.userId,
+    );
 
     await db.user.delete({
       where: { id: existingUserByEmail.id },

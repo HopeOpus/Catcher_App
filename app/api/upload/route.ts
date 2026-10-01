@@ -5,6 +5,7 @@ import {
 } from '@/lib/authenticated-user';
 import {
   isCloudinaryConfigured,
+  validateDocumentUploadFile,
   validateImageUploadFile,
   uploadImageToCloudinary,
 } from '@/lib/cloudinary';
@@ -65,7 +66,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const validationError = validateImageUploadFile(file);
+    // "business_document" (CAC certificates) also accepts PDFs; everything
+    // else stays image-only.
+    const purpose = formData.get('purpose') === 'business_document' ? 'business_document' : 'image';
+    const validationError =
+      purpose === 'business_document'
+        ? validateDocumentUploadFile(file)
+        : validateImageUploadFile(file);
 
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
@@ -83,7 +90,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await uploadImageToCloudinary(file, uploadKey);
+    const result = await uploadImageToCloudinary(file, uploadKey, {
+      subfolder: purpose === 'business_document' ? 'business-documents' : undefined,
+    });
 
     return NextResponse.json({ 
       success: true, 

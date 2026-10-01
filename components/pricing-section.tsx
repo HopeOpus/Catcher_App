@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { buildSupportMailto } from '@/lib/support'
+import {
+  BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
+  BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO,
+  formatNgnFromKobo,
+} from '@/lib/property-plans'
 
 export function PricingSection() {
   const enterpriseContactLink = buildSupportMailto({
@@ -141,6 +146,20 @@ export function PricingSection() {
               </Button>
             </div>
           ))}
+        </div>
+
+        <div className="mt-12 flex flex-col gap-4 rounded-2xl border border-[#36689e]/20 bg-[#f0f5fa] p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-lg font-semibold text-[#0F2651]">Registering assets for a company?</p>
+            <p className="mt-1 text-slate-600">
+              Business accounts start at {formatNgnFromKobo(BUSINESS_MONTHLY_PROPERTY_PLAN_PRICE_NGN_KOBO)} per asset
+              monthly or {formatNgnFromKobo(BUSINESS_YEARLY_PROPERTY_PLAN_PRICE_NGN_KOBO)} yearly, with team access and
+              a Verified Business badge.
+            </p>
+          </div>
+          <Button asChild className="h-11 shrink-0 bg-[#0F2651] text-white hover:bg-[#36689e]">
+            <Link href="/business">Explore Catcher for Business</Link>
+          </Button>
         </div>
 
         <div className="mt-12 text-center">

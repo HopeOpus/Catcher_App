@@ -1,18 +1,18 @@
-import { redirect } from "next/navigation";
+import {
+  canInScope,
+  ownershipWhere,
+  type AccountScope,
+} from "@/lib/account-scope";
 import {
   normalizeStoredPhotoUrl,
   type PropertyPlanCodeValue,
 } from "@/lib/catcher-domain";
-import {
-  getAuthenticatedAppUser,
-  syncAuthenticatedAppUserRecord,
-} from "@/lib/authenticated-user";
-import { syncPropertyLifecycle } from "@/lib/property-lifecycle";
+import { getDashboardContext, hasUsedFreePlan } from "@/lib/dashboard-context";
 import {
   getCoverageDisplayState,
   getCurrentAndUpcomingCoverage,
 } from "@/lib/property-coverage";
-import { PROPERTY_PLAN_DEFINITIONS } from "@/lib/property-plans";
+import { getPropertyPlanDefinitions } from "@/lib/property-plans";
 import { prisma } from "@/lib/prisma";
 import { SUPPORT_EMAIL } from "@/lib/support";
 import type {
@@ -55,12 +55,10 @@ function serializeCoverage(
 }
 
 async function getManagedPropertyBillingItems(
-  userId: string,
+  scope: AccountScope,
 ): Promise<ManagedPropertyBillingItem[]> {
   const properties = await prisma.property.findMany({
-    where: {
-      userId,
-    },
+    where: ownershipWhere(scope),
     include: {
       photos: {
         orderBy: { uploadedAt: "asc" },
@@ -153,25 +151,12 @@ function buildDashboardSummary(
 }
 
 export default async function SubscriptionsPage() {
-  const authenticatedUser = await getAuthenticatedAppUser();
+  const context = await getDashboardContext({ syncLifecycle: true });
+  const { scope } = context;
 
-  if (!authenticatedUser) {
-    redirect("/auth/signin");
-  }
-
-  await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
-  await syncPropertyLifecycle(prisma, {
-    userId: authenticatedUser.userId,
-  });
-
-  const [properties, freePlanUsageCount] = await Promise.all([
-    getManagedPropertyBillingItems(authenticatedUser.userId),
-    prisma.propertyCoverage.count({
-      where: {
-        userId: authenticatedUser.userId,
-        planCode: "free",
-      },
-    }),
+  const [properties, usedFreePlan] = await Promise.all([
+    getManagedPropertyBillingItems(scope),
+    hasUsedFreePlan(context),
   ]);
 
   return (
@@ -179,8 +164,10 @@ export default async function SubscriptionsPage() {
       supportEmail={SUPPORT_EMAIL}
       properties={properties}
       summary={buildDashboardSummary(properties)}
-      hasUsedFreePlan={freePlanUsageCount > 0}
-      planDefinitions={[...PROPERTY_PLAN_DEFINITIONS]}
+      hasUsedFreePlan={usedFreePlan}
+      planDefinitions={[...getPropertyPlanDefinitions(context.audience)]}
+      canPurchase={canInScope(scope, "purchase")}
+      businessName={scope.kind === "business" ? scope.business.name : null}
     />
   );
 }

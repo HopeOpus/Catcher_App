@@ -17,6 +17,7 @@ export type UpsertBillingReceiptInput = {
   checkoutSessionId?: string | null;
   paymentEventLogId?: string | null;
   userId: string;
+  businessId?: string | null;
   propertyId: string;
   provider?: PaymentProvider;
   reference?: string | null;
@@ -52,6 +53,7 @@ export async function upsertBillingReceipt(
       checkoutSessionId: input.checkoutSessionId ?? null,
       paymentEventLogId: input.paymentEventLogId ?? null,
       userId: input.userId,
+      businessId: input.businessId ?? null,
       propertyId: input.propertyId,
       provider: input.provider ?? "Paystack",
       reference: input.reference ?? null,
@@ -76,6 +78,7 @@ export async function upsertBillingReceipt(
       checkoutSessionId: input.checkoutSessionId ?? null,
       paymentEventLogId: input.paymentEventLogId ?? null,
       userId: input.userId,
+      businessId: input.businessId ?? null,
       propertyId: input.propertyId,
       provider: input.provider ?? "Paystack",
       reference: input.reference ?? null,

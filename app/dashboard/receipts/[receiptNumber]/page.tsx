@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, CreditCard, Shield } from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Building2, CheckCircle2, CreditCard, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,10 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  getAuthenticatedAppUser,
-  syncAuthenticatedAppUserRecord,
-} from '@/lib/authenticated-user';
+import { ownershipWhere } from '@/lib/account-scope';
+import { getDashboardContext } from '@/lib/dashboard-context';
 import { formatNgnFromKobo } from '@/lib/property-plans';
 import { prisma } from '@/lib/prisma';
 import ReceiptViewActions from '../receipt-view-actions';
@@ -61,20 +59,29 @@ function getReceiptStatusClasses(status: string | null | undefined) {
 export default async function ReceiptDetailPage({
   params,
 }: ReceiptDetailPageProps) {
-  const authenticatedUser = await getAuthenticatedAppUser();
-
-  if (!authenticatedUser) {
-    redirect('/auth/signin');
-  }
-
-  await syncAuthenticatedAppUserRecord(prisma, authenticatedUser);
+  const { scope } = await getDashboardContext();
   const { receiptNumber } = await params;
   const receipt = await prisma.billingReceipt.findFirst({
     where: {
       receiptNumber,
-      userId: authenticatedUser.userId,
+      ...ownershipWhere(scope),
     },
     include: {
+      user: {
+        select: { name: true, email: true },
+      },
+      business: {
+        select: {
+          name: true,
+          registrationNumber: true,
+          taxId: true,
+          addressLine: true,
+          city: true,
+          state: true,
+          country: true,
+          email: true,
+        },
+      },
       property: {
         select: {
           id: true,
@@ -172,6 +179,58 @@ export default async function ReceiptDetailPage({
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-[#36689e]" />
+              <h2 className="text-lg font-semibold text-[#0F2651]">Billed to</h2>
+            </div>
+            {receipt.business ? (
+              <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-2">
+                <p>
+                  <span className="font-medium text-[#0F2651]">Business:</span>{' '}
+                  {receipt.business.name}
+                </p>
+                <p>
+                  <span className="font-medium text-[#0F2651]">CAC number:</span>{' '}
+                  {receipt.business.registrationNumber}
+                </p>
+                {receipt.business.taxId ? (
+                  <p>
+                    <span className="font-medium text-[#0F2651]">TIN:</span>{' '}
+                    {receipt.business.taxId}
+                  </p>
+                ) : null}
+                <p>
+                  <span className="font-medium text-[#0F2651]">Email:</span>{' '}
+                  {receipt.business.email}
+                </p>
+                <p className="sm:col-span-2">
+                  <span className="font-medium text-[#0F2651]">Address:</span>{' '}
+                  {[
+                    receipt.business.addressLine,
+                    receipt.business.city,
+                    receipt.business.state,
+                    receipt.business.country,
+                  ].join(', ')}
+                </p>
+                <p className="sm:col-span-2 text-slate-500">
+                  Paid by {receipt.user.name} ({receipt.user.email})
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm text-slate-700">
+                <p>
+                  <span className="font-medium text-[#0F2651]">Name:</span>{' '}
+                  {receipt.user.name}
+                </p>
+                <p>
+                  <span className="font-medium text-[#0F2651]">Email:</span>{' '}
+                  {receipt.user.email}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
