@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   ArrowRight,
+  Briefcase,
   Building2,
   CreditCard,
   Package,
@@ -38,6 +39,7 @@ export default async function AdminOverviewPage({
     activeSubscriptions,
     catalogCount,
     recentPaymentEvents,
+    pendingBusinesses,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({
@@ -74,6 +76,7 @@ export default async function AdminOverviewPage({
         createdAt: true,
       },
     }),
+    prisma.business.count({ where: { verificationStatus: 'pending' } }),
   ]);
 
   const stats = [
@@ -148,6 +151,22 @@ export default async function AdminOverviewPage({
       />
 
       <AdminPageNotice notice={notice} />
+
+      {pendingBusinesses > 0 ? (
+        <Link
+          href="/admin/businesses?filter=pending"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 transition-colors hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-3">
+            <Briefcase aria-hidden className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {pendingBusinesses} {pendingBusinesses === 1 ? 'business is' : 'businesses are'} waiting for CAC
+              verification
+            </span>
+          </span>
+          <ArrowRight aria-hidden className="h-4 w-4" />
+        </Link>
+      ) : null}
 
       <Card className="border-[#36689e]/20 bg-[#36689e]/5">
         <CardContent className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
