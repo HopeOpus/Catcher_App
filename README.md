@@ -43,7 +43,7 @@ After that, every deploy that adds a migration needs `npm run db:migrate:deploy`
 
 ## Deployment
 
-GitHub Actions (`.github/workflows/deploy-vercel.yml`) runs typecheck, lint, tests and build on every PR. PRs get a Vercel preview deployment; pushes to `main` deploy to production.
+Vercel's GitHub integration builds and deploys: every PR gets a preview deployment and every push to `main` goes to production. GitHub Actions (`.github/workflows/deploy-vercel.yml`) runs typecheck, lint and tests on every PR.
 
 ## Where things live
 
